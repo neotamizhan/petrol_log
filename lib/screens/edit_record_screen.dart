@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../models/fill_record.dart';
 import '../providers/records_provider.dart';
+import '../theme/app_theme.dart';
 
 class EditRecordScreen extends StatefulWidget {
   final FillRecord record;
@@ -20,15 +21,17 @@ class _EditRecordScreenState extends State<EditRecordScreen> {
   late TextEditingController _costController;
   late TextEditingController _notesController;
   late DateTime _selectedDate;
+  late TimeOfDay _selectedTime;
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
     _odometerController = TextEditingController(text: widget.record.odometerKm.toStringAsFixed(0));
-    _costController = TextEditingController(text: widget.record.cost.toStringAsFixed(0));
+    _costController = TextEditingController(text: widget.record.cost.toStringAsFixed(2));
     _notesController = TextEditingController(text: widget.record.notes);
     _selectedDate = widget.record.date;
+    _selectedTime = TimeOfDay.fromDateTime(widget.record.date);
   }
 
   @override
@@ -43,199 +46,193 @@ class _EditRecordScreenState extends State<EditRecordScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final dateFormat = DateFormat('MMM dd, yyyy');
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: const Text('Edit Record'),
-        backgroundColor: colorScheme.surface,
-        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_outline_rounded),
             onPressed: () => _showDeleteDialog(context),
-            tooltip: 'Delete',
           ),
         ],
       ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
           children: [
-            // Date Picker
-            _SectionCard(
-              icon: Icons.calendar_today_rounded,
-              title: 'Date',
-              colorScheme: colorScheme,
-              child: InkWell(
-                onTap: _pickDate,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surfaceDark : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark ? AppColors.outlineDark : AppColors.outlineLight,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Row(
                     children: [
-                      Icon(Icons.event_rounded, color: colorScheme.primary),
-                      const SizedBox(width: 12),
-                      Text(
-                        DateFormat('EEEE, dd MMMM yyyy').format(_selectedDate),
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w500,
+                      Expanded(
+                        child: _TapFieldCard(
+                          icon: Icons.calendar_today_rounded,
+                          label: 'Date',
+                          value: dateFormat.format(_selectedDate),
+                          onTap: _pickDate,
                         ),
                       ),
-                      const Spacer(),
-                      Icon(
-                        Icons.arrow_drop_down_rounded,
-                        color: colorScheme.onSurface.withOpacity(0.5),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _TapFieldCard(
+                          icon: Icons.schedule_rounded,
+                          label: 'Time',
+                          value: _selectedTime.format(context),
+                          onTap: _pickTime,
+                        ),
                       ),
                     ],
                   ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            _InputCard(
+              label: 'Odometer',
+              icon: Icons.speed_rounded,
+              child: _TextFieldShell(
+                trailingText: 'km',
+                child: TextFormField(
+                  controller: _odometerController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                  ],
+                  decoration: const InputDecoration(
+                    hintText: '0',
+                    border: InputBorder.none,
+                  ),
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                  textAlign: TextAlign.right,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter odometer reading';
+                    }
+                    if (double.tryParse(value) == null) {
+                      return 'Please enter a valid number';
+                    }
+                    return null;
+                  },
                 ),
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // Odometer Reading
-            _SectionCard(
-              icon: Icons.speed_rounded,
-              title: 'Odometer Reading',
-              colorScheme: colorScheme,
-              child: TextFormField(
-                controller: _odometerController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(
-                  hintText: 'Enter odometer reading',
-                  suffixText: 'km',
-                  filled: true,
-                  fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.5),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colorScheme.primary, width: 2),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter odometer reading';
-                  }
-                  if (double.tryParse(value) == null) {
-                    return 'Please enter a valid number';
-                  }
-                  return null;
+            _InputCard(
+              label: 'Total Cost',
+              icon: Icons.attach_money_rounded,
+              child: Consumer<RecordsProvider>(
+                builder: (context, provider, child) {
+                  return _TextFieldShell(
+                    leadingText: provider.currency,
+                    child: TextFormField(
+                      controller: _costController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                      ],
+                      decoration: const InputDecoration(
+                        hintText: '0.00',
+                        border: InputBorder.none,
+                      ),
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                      textAlign: TextAlign.right,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter cost';
+                        }
+                        if (double.tryParse(value) == null) {
+                          return 'Please enter a valid amount';
+                        }
+                        return null;
+                      },
+                    ),
+                  );
                 },
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // Cost
-            Consumer<RecordsProvider>(
-              builder: (context, provider, child) {
-                return _SectionCard(
-                  icon: Icons.attach_money_rounded,
-                  title: 'Total Cost',
-                  colorScheme: colorScheme,
-                  child: TextFormField(
-                    controller: _costController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-                    ],
-                    decoration: InputDecoration(
-                      hintText: 'Enter total cost',
-                      prefixText: '${provider.currency} ',
-                      filled: true,
-                      fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.5),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: colorScheme.primary, width: 2),
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter cost';
-                      }
-                      if (double.tryParse(value) == null) {
-                        return 'Please enter a valid amount';
-                      }
-                      return null;
-                    },
-                  ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 20),
-
-            // Notes
-            _SectionCard(
+            _InputCard(
+              label: 'Notes',
               icon: Icons.notes_rounded,
-              title: 'Notes (Optional)',
-              colorScheme: colorScheme,
-              child: TextFormField(
-                controller: _notesController,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText: 'Add any notes...',
-                  filled: true,
-                  fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.5),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colorScheme.primary, width: 2),
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 32),
-
-            // Save Button
-            FilledButton(
-              onPressed: _isSaving ? null : _saveRecord,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceDarkElevated : AppColors.backgroundLight,
                   borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark ? AppColors.outlineDark : AppColors.outlineLight,
+                  ),
+                ),
+                child: TextFormField(
+                  controller: _notesController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    hintText: 'Add any notes...',
+                    border: InputBorder.none,
+                  ),
                 ),
               ),
-              child: _isSaving
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.save_rounded),
-                        SizedBox(width: 8),
-                        Text(
-                          'Save Changes',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
             ),
           ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                colorScheme.background.withOpacity(0),
+                colorScheme.background,
+              ],
+            ),
+          ),
+          child: FilledButton(
+            onPressed: _isSaving ? null : _saveRecord,
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            child: _isSaving
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.save_rounded),
+                      SizedBox(width: 8),
+                      Text('Save Changes'),
+                    ],
+                  ),
+          ),
         ),
       ),
     );
@@ -254,15 +251,33 @@ class _EditRecordScreenState extends State<EditRecordScreen> {
     }
   }
 
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _selectedTime,
+    );
+    if (picked != null) {
+      setState(() => _selectedTime = picked);
+    }
+  }
+
   Future<void> _saveRecord() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSaving = true);
 
     try {
+      final recordDate = DateTime(
+        _selectedDate.year,
+        _selectedDate.month,
+        _selectedDate.day,
+        _selectedTime.hour,
+        _selectedTime.minute,
+      );
+
       final updatedRecord = FillRecord(
         id: widget.record.id,
-        date: _selectedDate,
+        date: recordDate,
         odometerKm: double.parse(_odometerController.text),
         cost: double.parse(_costController.text),
         notes: _notesController.text.trim(),
@@ -325,33 +340,94 @@ class _EditRecordScreenState extends State<EditRecordScreen> {
   }
 }
 
-class _SectionCard extends StatelessWidget {
+class _TapFieldCard extends StatelessWidget {
   final IconData icon;
-  final String title;
-  final Widget child;
-  final ColorScheme colorScheme;
+  final String label;
+  final String value;
+  final VoidCallback onTap;
 
-  const _SectionCard({
+  const _TapFieldCard({
     required this.icon,
-    required this.title,
-    required this.child,
-    required this.colorScheme,
+    required this.label,
+    required this.value,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.surfaceDark : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark ? AppColors.outlineDark : AppColors.outlineLight,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 16, color: AppColors.primary),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InputCard extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Widget child;
+
+  const _InputCard({
+    required this.label,
+    required this.icon,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Icon(icon, size: 18, color: colorScheme.primary),
+            Icon(icon, size: 18, color: AppColors.primary),
             const SizedBox(width: 8),
             Text(
-              title,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: colorScheme.onSurface.withOpacity(0.8),
+              label.toUpperCase(),
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.1,
               ),
             ),
           ],
@@ -359,6 +435,62 @@ class _SectionCard extends StatelessWidget {
         const SizedBox(height: 10),
         child,
       ],
+    );
+  }
+}
+
+class _TextFieldShell extends StatelessWidget {
+  final Widget child;
+  final String? leadingText;
+  final String? trailingText;
+
+  const _TextFieldShell({
+    required this.child,
+    this.leadingText,
+    this.trailingText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDarkElevated : AppColors.backgroundLight,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? AppColors.outlineDark : AppColors.outlineLight,
+        ),
+      ),
+      child: Row(
+        children: [
+          if (leadingText != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Text(
+                leadingText!,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          Expanded(child: child),
+          if (trailingText != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: Text(
+                trailingText!,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.accentAmber,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

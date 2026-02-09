@@ -1,8 +1,12 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/records_provider.dart';
 import '../models/fill_record.dart';
+import '../theme/app_theme.dart';
+import '../widgets/glass_panel.dart';
+import 'settings_screen.dart';
 
 class StatsScreen extends StatelessWidget {
   const StatsScreen({super.key});
@@ -11,160 +15,238 @@ class StatsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Statistics'),
-        backgroundColor: colorScheme.surface,
-        elevation: 0,
-      ),
-      body: Consumer<RecordsProvider>(
-        builder: (context, provider, child) {
-          final stats = provider.getOverallStats();
-          final totalRecords = stats['totalRecords'] as int;
+      body: SafeArea(
+        child: Consumer<RecordsProvider>(
+          builder: (context, provider, child) {
+            final stats = provider.getOverallStats();
+            final totalRecords = stats['totalRecords'] as int;
 
-          if (totalRecords == 0) {
-            return _EmptyState(colorScheme: colorScheme);
-          }
+            if (totalRecords == 0) {
+              return _EmptyState(colorScheme: colorScheme);
+            }
 
-          return ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              // Overview Cards
-              _buildOverviewSection(context, stats, colorScheme),
-              
-              const SizedBox(height: 24),
-
-              // Mileage Section
-              _buildMileageSection(context, stats, colorScheme, provider),
-              
-              const SizedBox(height: 24),
-
-              // Spending Section
-              _buildSpendingSection(context, stats, colorScheme),
-              
-              const SizedBox(height: 24),
-
-              // Fill Pattern Section
-              _buildFillPatternSection(context, stats, colorScheme),
-              
-              const SizedBox(height: 24),
-
-              // Monthly Trend
-              _buildMonthlyTrendSection(context, stats, colorScheme),
-              
-              const SizedBox(height: 20),
-            ],
-          );
-        },
+            return CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _CircleAction(
+                          icon: Icons.arrow_back_rounded,
+                          onTap: () => Navigator.of(context).pop(),
+                        ),
+                        Column(
+                          children: [
+                            Text(
+                              'Vehicle Stats',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: colorScheme.onSurface.withOpacity(0.5),
+                                letterSpacing: 1.2,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Text(
+                                  'Petrol Log',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Icon(
+                                  Icons.expand_more_rounded,
+                                  size: 18,
+                                  color: AppColors.primary,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        _CircleAction(
+                          icon: Icons.settings_rounded,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const SettingsScreen(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    child: _OverviewGrid(stats: stats),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: _EfficiencyPanel(stats: stats),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                    child: _MonthlySpendPanel(stats: stats, currency: provider.currency),
+                  ),
+                ),
+                if (!isDark)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                      child: _InsightStrip(stats: stats),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
+}
 
-  Widget _buildOverviewSection(BuildContext context, Map<String, dynamic> stats, ColorScheme colorScheme) {
-    final theme = Theme.of(context);
+class _OverviewGrid extends StatelessWidget {
+  final Map<String, dynamic> stats;
+
+  const _OverviewGrid({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
     final totalRecords = stats['totalRecords'] as int;
     final totalDistance = stats['totalDistance'] as double;
     final totalFuelLiters = stats['totalFuelLiters'] as double;
     final totalDays = stats['totalDays'] as int;
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            colorScheme.primaryContainer,
-            colorScheme.primaryContainer.withOpacity(0.7),
-          ],
+    final distanceLabel = totalDistance >= 1000
+        ? '${(totalDistance / 1000).toStringAsFixed(1)}k'
+        : totalDistance.toStringAsFixed(0);
+
+    final durationMonths = totalDays > 0 ? (totalDays / 30).ceil() : 0;
+
+    return GridView.count(
+      crossAxisCount: 2,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      childAspectRatio: 1.2,
+      children: [
+        _OverviewCard(
+          label: 'Total Fills',
+          value: totalRecords.toString(),
+          accent: AppColors.primary,
+          icon: Icons.local_gas_station_rounded,
         ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: colorScheme.primary.withOpacity(0.15),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+        _OverviewCard(
+          label: 'Distance',
+          value: distanceLabel,
+          unit: 'km',
+          accent: AppColors.accentBlue,
+          icon: Icons.route_rounded,
+        ),
+        _OverviewCard(
+          label: 'Total Fuel',
+          value: totalFuelLiters.toStringAsFixed(0),
+          unit: 'L',
+          accent: AppColors.accentAmber,
+          icon: Icons.water_drop_rounded,
+        ),
+        _OverviewCard(
+          label: 'Duration',
+          value: durationMonths.toString(),
+          unit: 'mo',
+          accent: AppColors.accentPurple,
+          icon: Icons.schedule_rounded,
+        ),
+      ],
+    );
+  }
+}
+
+class _OverviewCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final String? unit;
+  final Color accent;
+  final IconData icon;
+
+  const _OverviewCard({
+    required this.label,
+    required this.value,
+    required this.accent,
+    required this.icon,
+    this.unit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return GlassPanel(
+      enableBlur: false,
+      padding: const EdgeInsets.all(16),
+      borderRadius: BorderRadius.circular(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: colorScheme.primary.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.analytics_rounded,
-                  color: colorScheme.primary,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
               Text(
-                'Overview',
-                style: theme.textTheme.titleLarge?.copyWith(
+                label,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withOpacity(0.6),
                   fontWeight: FontWeight.w600,
-                  color: colorScheme.onPrimaryContainer,
                 ),
               ),
+              Icon(icon, size: 20, color: accent),
             ],
           ),
-          const SizedBox(height: 20),
+          const Spacer(),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Expanded(
-                child: _StatTile(
-                  icon: Icons.local_gas_station_rounded,
-                  label: 'Total Fills',
-                  value: totalRecords.toString(),
-                  colorScheme: colorScheme,
+              Text(
+                value,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _StatTile(
-                  icon: Icons.route_rounded,
-                  label: 'Distance',
-                  value: '${(totalDistance / 1000).toStringAsFixed(1)}k km',
-                  colorScheme: colorScheme,
+              if (unit != null) ...[
+                const SizedBox(width: 6),
+                Text(
+                  unit!,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: isDark ? Colors.white70 : Colors.black54,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _StatTile(
-                  icon: Icons.water_drop_rounded,
-                  label: 'Fuel Used',
-                  value: '${totalFuelLiters.toStringAsFixed(0)} L',
-                  colorScheme: colorScheme,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _StatTile(
-                  icon: Icons.calendar_month_rounded,
-                  label: 'Duration',
-                  value: '$totalDays days',
-                  colorScheme: colorScheme,
-                ),
-              ),
+              ],
             ],
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildMileageSection(BuildContext context, Map<String, dynamic> stats, ColorScheme colorScheme, RecordsProvider provider) {
+class _EfficiencyPanel extends StatelessWidget {
+  final Map<String, dynamic> stats;
+
+  const _EfficiencyPanel({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final averageMileage = stats['averageMileage'] as double;
     final bestMileage = stats['bestMileage'] as double;
@@ -173,238 +255,50 @@ class StatsScreen extends StatelessWidget {
     final worstRecord = stats['worstMileageRecord'] as FillRecord?;
     final dateFormat = DateFormat('dd MMM');
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.speed_rounded, color: colorScheme.primary, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Mileage Analysis',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          
-          // Average Mileage - Featured
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  colorScheme.primary.withOpacity(0.1),
-                  colorScheme.primary.withOpacity(0.05),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.trending_up_rounded, color: colorScheme.primary, size: 32),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Average Mileage',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurface.withOpacity(0.6),
-                      ),
-                    ),
-                    Text(
-                      '${averageMileage.toStringAsFixed(1)} km/L',
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: colorScheme.primary,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Best & Worst
-          Row(
-            children: [
-              Expanded(
-                child: _MileageCard(
-                  label: 'Best',
-                  mileage: bestMileage,
-                  date: bestRecord != null ? dateFormat.format(bestRecord.date) : '-',
-                  icon: Icons.emoji_events_rounded,
-                  iconColor: Colors.amber,
-                  colorScheme: colorScheme,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _MileageCard(
-                  label: 'Worst',
-                  mileage: worstMileage,
-                  date: worstRecord != null ? dateFormat.format(worstRecord.date) : '-',
-                  icon: Icons.warning_amber_rounded,
-                  iconColor: colorScheme.error,
-                  colorScheme: colorScheme,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+    final maxMileage = averageMileage > 0 ? math.max(averageMileage * 1.4, 15) : 15.0;
+    final value = (averageMileage / maxMileage).clamp(0.0, 1.0);
 
-  Widget _buildSpendingSection(BuildContext context, Map<String, dynamic> stats, ColorScheme colorScheme) {
-    final theme = Theme.of(context);
-    final totalSpent = stats['totalSpent'] as double;
-    final averageFillCost = stats['averageFillCost'] as double;
-    final provider = context.read<RecordsProvider>();
-    final fuelPrice = provider.fuelPricePerLiter;
-    final currency = provider.currency;
-
-    return Container(
+    return GlassPanel(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
-      ),
+      borderRadius: BorderRadius.circular(24),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.currency_rupee_rounded, color: colorScheme.secondary, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Spending',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
+          Text(
+            'Efficiency Analysis',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.6),
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.2,
+            ),
           ),
           const SizedBox(height: 16),
-          
-          Row(
-            children: [
-              Expanded(
-                child: _SpendingTile(
-                  label: 'Total Spent',
-                  value: '$currency${_formatCurrency(totalSpent)}',
-                  colorScheme: colorScheme,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _SpendingTile(
-                  label: 'Avg per Fill',
-                  value: '$currency${averageFillCost.toStringAsFixed(0)}',
-                  colorScheme: colorScheme,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+          SizedBox(
+            height: 150,
+            child: Stack(
+              alignment: Alignment.bottomCenter,
               children: [
-                Icon(Icons.info_outline_rounded, size: 16, color: colorScheme.onSurface.withOpacity(0.5)),
-                const SizedBox(width: 8),
-                Text(
-                  'Current fuel price: $currency${fuelPrice.toStringAsFixed(2)}/L',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurface.withOpacity(0.6),
+                CustomPaint(
+                  size: const Size(240, 120),
+                  painter: _GaugePainter(
+                    value: value,
+                    backgroundColor: theme.colorScheme.onSurface.withOpacity(0.08),
+                    foregroundColor: AppColors.primary,
                   ),
                 ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFillPatternSection(BuildContext context, Map<String, dynamic> stats, ColorScheme colorScheme) {
-    final theme = Theme.of(context);
-    final avgDays = stats['averageDaysBetweenFills'] as double;
-    final firstDate = stats['firstFillDate'] as DateTime?;
-    final lastDate = stats['lastFillDate'] as DateTime?;
-    final dateFormat = DateFormat('dd MMM yyyy');
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.calendar_today_rounded, color: colorScheme.tertiary, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Fill Pattern',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  colorScheme.tertiary.withOpacity(0.1),
-                  colorScheme.tertiary.withOpacity(0.05),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.repeat_rounded, color: colorScheme.tertiary, size: 32),
-                const SizedBox(width: 12),
                 Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Average Fill Interval',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurface.withOpacity(0.6),
+                      averageMileage > 0 ? averageMileage.toStringAsFixed(1) : '--',
+                      style: theme.textTheme.displaySmall?.copyWith(
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     Text(
-                      '${avgDays.toStringAsFixed(0)} days',
-                      style: theme.textTheme.headlineSmall?.copyWith(
+                      'km/L',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppColors.primary,
                         fontWeight: FontWeight.w700,
-                        color: colorScheme.tertiary,
                       ),
                     ),
                   ],
@@ -412,19 +306,24 @@ class StatsScreen extends StatelessWidget {
               ],
             ),
           ),
-          
-          const SizedBox(height: 12),
-          
+          const SizedBox(height: 16),
           Row(
             children: [
-              Icon(Icons.history_rounded, size: 16, color: colorScheme.onSurface.withOpacity(0.5)),
-              const SizedBox(width: 8),
-              Text(
-                firstDate != null && lastDate != null
-                    ? 'From ${dateFormat.format(firstDate)} to ${dateFormat.format(lastDate)}'
-                    : 'No date range available',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurface.withOpacity(0.6),
+              Expanded(
+                child: _MiniCard(
+                  label: 'Best Trip',
+                  value: bestMileage > 0 ? bestMileage.toStringAsFixed(1) : '--',
+                  hint: bestRecord != null ? dateFormat.format(bestRecord.date) : 'Highway',
+                  valueColor: const Color(0xFF22C55E),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _MiniCard(
+                  label: 'Worst Trip',
+                  value: worstMileage > 0 ? worstMileage.toStringAsFixed(1) : '--',
+                  hint: worstRecord != null ? dateFormat.format(worstRecord.date) : 'City',
+                  valueColor: AppColors.accentAmber,
                 ),
               ),
             ],
@@ -433,89 +332,168 @@ class StatsScreen extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildMonthlyTrendSection(BuildContext context, Map<String, dynamic> stats, ColorScheme colorScheme) {
+class _MiniCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final String hint;
+  final Color valueColor;
+
+  const _MiniCard({
+    required this.label,
+    required this.value,
+    required this.hint,
+    required this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.brightness == Brightness.dark
+            ? AppColors.surfaceDarkElevated
+            : AppColors.backgroundLight,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.brightness == Brightness.dark
+              ? AppColors.outlineDark.withOpacity(0.6)
+              : AppColors.outlineLight,
+        ),
+      ),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.6),
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.1,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: valueColor,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          Text(
+            hint,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MonthlySpendPanel extends StatelessWidget {
+  final Map<String, dynamic> stats;
+  final String currency;
+
+  const _MonthlySpendPanel({required this.stats, required this.currency});
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final monthlySpending = stats['monthlySpending'] as Map<String, double>;
-    final currency = context.read<RecordsProvider>().currency;
-    
-    if (monthlySpending.isEmpty) return const SizedBox.shrink();
+
+    if (monthlySpending.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     final sortedMonths = monthlySpending.keys.toList()..sort();
-    final recentMonths = sortedMonths.length > 6 
-        ? sortedMonths.sublist(sortedMonths.length - 6) 
+    final recentMonths = sortedMonths.length > 5
+        ? sortedMonths.sublist(sortedMonths.length - 5)
         : sortedMonths;
-    
-    final maxSpending = monthlySpending.values.reduce((a, b) => a > b ? a : b);
 
-    return Container(
+    final maxSpending = monthlySpending.values.reduce(math.max);
+
+    return GlassPanel(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
-      ),
+      borderRadius: BorderRadius.circular(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(Icons.bar_chart_rounded, color: colorScheme.primary, size: 20),
-              const SizedBox(width: 8),
               Text(
-                'Monthly Spending',
+                'Monthly Spend',
                 style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      'This Year',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.arrow_drop_down_rounded,
+                      size: 18,
+                      color: AppColors.primary,
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 20),
-          
           SizedBox(
-            height: 120,
+            height: 140,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
-              children: recentMonths.map((month) {
-                final spending = monthlySpending[month] ?? 0;
-                final height = maxSpending > 0 ? (spending / maxSpending) * 80 : 0.0;
-                final monthLabel = month.substring(5); // Get MM part
-                
+              children: recentMonths.map((monthKey) {
+                final spending = monthlySpending[monthKey] ?? 0;
+                final height = maxSpending > 0 ? (spending / maxSpending) * 120 : 0.0;
+                final isPeak = spending == maxSpending;
                 return Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        Text(
-                          '$currency${(spending / 1000).toStringAsFixed(1)}k',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                            color: colorScheme.onSurface.withOpacity(0.7),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
                         Container(
                           height: height + 8,
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.bottomCenter,
-                              end: Alignment.topCenter,
-                              colors: [
-                                colorScheme.primary,
-                                colorScheme.primary.withOpacity(0.6),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(6),
+                            color: isPeak ? AppColors.primary : AppColors.primary.withOpacity(0.4),
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                            boxShadow: isPeak
+                                ? [
+                                    BoxShadow(
+                                      color: AppColors.primary.withOpacity(0.3),
+                                      blurRadius: 16,
+                                    ),
+                                  ]
+                                : null,
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          _getMonthName(int.parse(monthLabel)),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontSize: 10,
-                            color: colorScheme.onSurface.withOpacity(0.6),
+                          _monthName(monthKey),
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: isPeak
+                                ? theme.colorScheme.onSurface
+                                : theme.colorScheme.onSurface.withOpacity(0.6),
+                            fontWeight: isPeak ? FontWeight.w700 : FontWeight.w500,
                           ),
                         ),
                       ],
@@ -525,23 +503,139 @@ class StatsScreen extends StatelessWidget {
               }).toList(),
             ),
           ),
+          const SizedBox(height: 12),
+          Text(
+            'Peak month: $currency${maxSpending.toStringAsFixed(0)}',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.6),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  String _formatCurrency(double amount) {
-    if (amount >= 100000) {
-      return '${(amount / 100000).toStringAsFixed(1)}L';
-    } else if (amount >= 1000) {
-      return '${(amount / 1000).toStringAsFixed(1)}k';
-    }
-    return amount.toStringAsFixed(0);
-  }
-
-  String _getMonthName(int month) {
+  String _monthName(String monthKey) {
+    final parts = monthKey.split('-');
+    if (parts.length < 2) return monthKey;
+    final month = int.tryParse(parts[1]) ?? 1;
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return months[month - 1];
+  }
+}
+
+class _InsightStrip extends StatelessWidget {
+  final Map<String, dynamic> stats;
+
+  const _InsightStrip({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final averageFillCost = stats['averageFillCost'] as double;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: AppColors.primary.withOpacity(0.08),
+        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            height: 42,
+            width: 42,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.trending_up_rounded, color: AppColors.primary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Average fill cost is ${averageFillCost.toStringAsFixed(0)}. Track trends to optimize your spend.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.7),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CircleAction extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _CircleAction({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        height: 44,
+        width: 44,
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.surfaceDarkElevated : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark ? AppColors.outlineDark.withOpacity(0.6) : AppColors.outlineLight,
+          ),
+        ),
+        child: Icon(icon, color: Theme.of(context).colorScheme.onSurface),
+      ),
+    );
+  }
+}
+
+class _GaugePainter extends CustomPainter {
+  final double value;
+  final Color backgroundColor;
+  final Color foregroundColor;
+
+  _GaugePainter({
+    required this.value,
+    required this.backgroundColor,
+    required this.foregroundColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height);
+    final radius = size.width / 2.2;
+    const strokeWidth = 12.0;
+
+    final backgroundPaint = Paint()
+      ..color = backgroundColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    final foregroundPaint = Paint()
+      ..color = foregroundColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    const startAngle = math.pi;
+    const sweepAngle = math.pi;
+
+    canvas.drawArc(rect, startAngle, sweepAngle, false, backgroundPaint);
+    canvas.drawArc(rect, startAngle, sweepAngle * value, false, foregroundPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _GaugePainter oldDelegate) {
+    return oldDelegate.value != value ||
+        oldDelegate.backgroundColor != backgroundColor ||
+        oldDelegate.foregroundColor != foregroundColor;
   }
 }
 
@@ -561,13 +655,13 @@ class _EmptyState extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: colorScheme.primaryContainer.withOpacity(0.5),
+                color: AppColors.primary.withOpacity(0.12),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.analytics_outlined,
                 size: 64,
-                color: colorScheme.primary,
+                color: AppColors.primary,
               ),
             ),
             const SizedBox(height: 24),
@@ -587,153 +681,6 @@ class _EmptyState extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _StatTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final ColorScheme colorScheme;
-
-  const _StatTile({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.colorScheme,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colorScheme.surface.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 20, color: colorScheme.primary),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: colorScheme.onPrimaryContainer,
-            ),
-          ),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: colorScheme.onPrimaryContainer.withOpacity(0.7),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MileageCard extends StatelessWidget {
-  final String label;
-  final double mileage;
-  final String date;
-  final IconData icon;
-  final Color iconColor;
-  final ColorScheme colorScheme;
-
-  const _MileageCard({
-    required this.label,
-    required this.mileage,
-    required this.date,
-    required this.icon,
-    required this.iconColor,
-    required this.colorScheme,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: iconColor),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: colorScheme.onSurface.withOpacity(0.7),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            mileage > 0 ? '${mileage.toStringAsFixed(1)} km/L' : '-',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          Text(
-            date,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.5),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SpendingTile extends StatelessWidget {
-  final String label;
-  final String value;
-  final ColorScheme colorScheme;
-
-  const _SpendingTile({
-    required this.label,
-    required this.value,
-    required this.colorScheme,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.6),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: colorScheme.secondary,
-            ),
-          ),
-        ],
       ),
     );
   }

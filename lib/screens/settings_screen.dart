@@ -3,8 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/records_provider.dart';
 import '../services/import_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/glass_panel.dart';
 
-// Common currency options
 const List<Map<String, String>> _currencies = [
   {'symbol': '₹', 'name': 'Indian Rupee (INR)'},
   {'symbol': '\$', 'name': 'US Dollar (USD)'},
@@ -56,114 +57,140 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: const Text('Settings'),
-        backgroundColor: colorScheme.surface,
-        elevation: 0,
+        actions: [
+          TextButton(
+            onPressed: _hasChanges
+                ? _saveSettings
+                : () {
+                    Navigator.of(context).pop();
+                  },
+            child: Text(
+              _hasChanges ? 'Save' : 'Done',
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
       ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
-            // Currency Section
-            Container(
+            _SectionHeader(
+              icon: Icons.local_gas_station_rounded,
+              title: 'Current Pump Price',
+            ),
+            GlassPanel(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    colorScheme.tertiaryContainer,
-                    colorScheme.tertiaryContainer.withOpacity(0.7),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: colorScheme.tertiary.withOpacity(0.1),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
+              borderRadius: BorderRadius.circular(20),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text(
+                    'PRICE PER LITER',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurface.withOpacity(0.5),
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _priceController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                    ],
+                    style: theme.textTheme.displaySmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                    decoration: InputDecoration(
+                      prefixText: '$_selectedCurrency ',
+                      prefixStyle: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                      suffixText: '/L',
+                      filled: true,
+                      fillColor: isDark ? AppColors.surfaceDarkElevated : AppColors.backgroundLight,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    onChanged: (_) => setState(() => _hasChanges = true),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter fuel price';
+                      }
+                      final price = double.tryParse(value);
+                      if (price == null || price <= 0) {
+                        return 'Please enter a valid price';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: colorScheme.tertiary.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          Icons.currency_exchange_rounded,
-                          color: colorScheme.tertiary,
-                          size: 24,
+                        height: 8,
+                        width: 8,
+                        decoration: const BoxDecoration(
+                          color: Colors.redAccent,
+                          shape: BoxShape.circle,
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 8),
                       Text(
-                        'Currency',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.onTertiaryContainer,
+                        'Live update active',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onSurface.withOpacity(0.5),
+                          letterSpacing: 1.1,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Select your preferred currency for displaying costs.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onTertiaryContainer.withOpacity(0.7),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surface,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            _SectionHeader(
+              icon: Icons.tune_rounded,
+              title: 'Regional Preferences',
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: _PreferenceCard(
+                    title: 'Currency',
+                    icon: Icons.payments_rounded,
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        value: _currencies.any((c) => c['symbol'] == _selectedCurrency) 
-                            ? _selectedCurrency 
+                        value: _currencies.any((c) => c['symbol'] == _selectedCurrency)
+                            ? _selectedCurrency
                             : _currencies.first['symbol'],
                         isExpanded: true,
-                        icon: Icon(Icons.arrow_drop_down_rounded, color: colorScheme.tertiary),
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                        icon: Icon(Icons.expand_more_rounded, color: colorScheme.onSurface.withOpacity(0.6)),
                         items: _currencies.map((currency) {
                           return DropdownMenuItem<String>(
                             value: currency['symbol'],
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 40,
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    currency['symbol']!,
-                                    style: theme.textTheme.titleLarge?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      color: colorScheme.tertiary,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    currency['name']!,
-                                    style: theme.textTheme.bodyMedium,
-                                  ),
-                                ),
-                              ],
+                            child: Text(
+                              '${currency['symbol']}  ${currency['name']}',
+                              style: theme.textTheme.bodyMedium,
                             ),
                           );
                         }).toList(),
@@ -178,320 +205,167 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _PreferenceCard(
+                    title: 'Unit System',
+                    icon: Icons.straighten_rounded,
+                    child: Text(
+                      'Liters',
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+              ],
             ),
-
             const SizedBox(height: 24),
-
-            // Fuel Price Section
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    colorScheme.primaryContainer,
-                    colorScheme.primaryContainer.withOpacity(0.7),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: colorScheme.primary.withOpacity(0.1),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: colorScheme.primary.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          Icons.local_gas_station_rounded,
-                          color: colorScheme.primary,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Fuel Price',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.onPrimaryContainer,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Set the current price per liter of petrol. This is used to calculate the liters of fuel added.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onPrimaryContainer.withOpacity(0.7),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  TextFormField(
-                    controller: _priceController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-                    ],
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                    decoration: InputDecoration(
-                      prefixText: '$_selectedCurrency ',
-                      prefixStyle: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: colorScheme.primary,
-                      ),
-                      suffixText: '/ liter',
-                      filled: true,
-                      fillColor: colorScheme.surface,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(
-                          color: colorScheme.primary,
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                    onChanged: (value) {
-                      setState(() => _hasChanges = true);
-                    },
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter fuel price';
-                      }
-                      final price = double.tryParse(value);
-                      if (price == null || price <= 0) {
-                        return 'Please enter a valid price';
-                      }
-                      return null;
-                    },
-                  ),
-                ],
-              ),
+            _SectionHeader(
+              icon: Icons.table_view_rounded,
+              title: 'Data Management',
             ),
-
-            const SizedBox(height: 32),
-
-
-            // Save Button
-            if (_hasChanges)
-              FilledButton(
-                onPressed: _saveSettings,
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.save_rounded),
-                    SizedBox(width: 8),
-                    Text(
-                      'Save Settings',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-            if (_hasChanges) const SizedBox(height: 24),
-
-            // Import Section
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    colorScheme.secondaryContainer,
-                    colorScheme.secondaryContainer.withOpacity(0.7),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: colorScheme.secondary.withOpacity(0.1),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
+            GlassPanel(
+              padding: const EdgeInsets.all(18),
+              borderRadius: BorderRadius.circular(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(10),
+                        height: 42,
+                        width: 42,
                         decoration: BoxDecoration(
-                          color: colorScheme.secondary.withOpacity(0.15),
+                          color: AppColors.primary.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Icon(
-                          Icons.upload_file_rounded,
-                          color: colorScheme.secondary,
-                          size: 24,
-                        ),
+                        child: const Icon(Icons.upload_file_rounded, color: AppColors.primary),
                       ),
                       const SizedBox(width: 12),
-                      Text(
-                        'Import Data',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.onSecondaryContainer,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Import History',
+                              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            Text(
+                              'Migrate data from CSV exports.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurface.withOpacity(0.6),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Import fill records from a CSV file (exported from Excel).',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSecondaryContainer.withOpacity(0.7),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: colorScheme.surface.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(10),
+                      color: isDark ? AppColors.surfaceDarkElevated : AppColors.backgroundLight,
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'CSV Format:',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: colorScheme.onSecondaryContainer,
+                          'CSV Format',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         Text(
                           'Date, Odometer (km), Cost, Notes',
                           style: theme.textTheme.bodySmall?.copyWith(
                             fontFamily: 'monospace',
-                            color: colorScheme.onSecondaryContainer.withOpacity(0.8),
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'Example: 2026-01-30, 45230, 2500, Full tank',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            fontStyle: FontStyle.italic,
-                            color: colorScheme.onSecondaryContainer.withOpacity(0.6),
+                            color: colorScheme.onSurface.withOpacity(0.6),
                           ),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _isImporting ? null : _importFromCsv,
-                      icon: _isImporting
-                          ? SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: colorScheme.secondary,
-                              ),
-                            )
-                          : const Icon(Icons.file_upload_outlined),
-                      label: Text(_isImporting ? 'Importing...' : 'Select CSV File'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: BorderSide(color: colorScheme.secondary),
-                        foregroundColor: colorScheme.secondary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Info Section
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
                   Row(
                     children: [
-                      Icon(
-                        Icons.info_outline_rounded,
-                        color: colorScheme.onSurface.withOpacity(0.6),
-                        size: 20,
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: _isImporting ? null : _importFromCsv,
+                          icon: _isImporting
+                              ? SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: colorScheme.onPrimary,
+                                  ),
+                                )
+                              : const Icon(Icons.upload_file_rounded),
+                          label: Text(_isImporting ? 'Importing...' : 'Upload CSV'),
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'How calculations work',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.onSurface.withOpacity(0.8),
+                      const SizedBox(width: 12),
+                      IconButton(
+                        onPressed: () {},
+                        icon: const Icon(Icons.help_outline_rounded),
+                        style: IconButton.styleFrom(
+                          backgroundColor: isDark
+                              ? AppColors.surfaceDarkElevated
+                              : AppColors.backgroundLight,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  _InfoRow(
-                    label: 'Fuel Added',
-                    value: 'Cost ÷ Price per Liter',
-                    colorScheme: colorScheme,
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            _SectionHeader(
+              icon: Icons.analytics_rounded,
+              title: 'How We Calculate',
+            ),
+            GlassPanel(
+              padding: const EdgeInsets.all(18),
+              borderRadius: BorderRadius.circular(20),
+              child: Row(
+                children: [
+                  _CalcStep(
+                    title: 'Step 1',
+                    value: 'Odometer',
+                    icon: Icons.speed_rounded,
+                    color: AppColors.accentBlue,
                   ),
-                  _InfoRow(
-                    label: 'Distance',
-                    value: 'Current Odometer - Previous Odometer',
-                    colorScheme: colorScheme,
+                  const SizedBox(width: 8),
+                  Icon(Icons.arrow_forward_rounded, size: 18, color: colorScheme.onSurface.withOpacity(0.4)),
+                  const SizedBox(width: 8),
+                  _CalcStep(
+                    title: 'Step 2',
+                    value: 'Fuel Filled',
+                    icon: Icons.local_gas_station_rounded,
+                    color: AppColors.accentAmber,
                   ),
-                  _InfoRow(
-                    label: 'Mileage',
-                    value: 'Distance ÷ Fuel Added',
-                    colorScheme: colorScheme,
+                  const SizedBox(width: 8),
+                  Icon(Icons.arrow_forward_rounded, size: 18, color: colorScheme.onSurface.withOpacity(0.4)),
+                  const SizedBox(width: 8),
+                  _CalcStep(
+                    title: 'Result',
+                    value: 'Efficiency',
+                    icon: Icons.analytics_rounded,
+                    color: AppColors.primary,
                   ),
                 ],
               ),
             ),
-
-            const SizedBox(height: 20),
-            
-            // App Info
+            const SizedBox(height: 24),
             Center(
               child: Text(
                 'Petrol Log v1.0.0',
@@ -538,7 +412,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
 
       if (result.success && result.records.isNotEmpty) {
-        // Show confirmation dialog
         final shouldImport = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
@@ -594,41 +467,117 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-class _InfoRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final ColorScheme colorScheme;
+class _SectionHeader extends StatelessWidget {
+  final IconData icon;
+  final String title;
 
-  const _InfoRow({
-    required this.label,
-    required this.value,
-    required this.colorScheme,
+  const _SectionHeader({required this.icon, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: AppColors.primary),
+          const SizedBox(width: 8),
+          Text(
+            title.toUpperCase(),
+            style: theme.textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: theme.colorScheme.onSurface.withOpacity(0.6),
+              letterSpacing: 1.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PreferenceCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Widget child;
+
+  const _PreferenceCard({
+    required this.title,
+    required this.icon,
+    required this.child,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
+    final theme = Theme.of(context);
+    return GlassPanel(
+      padding: const EdgeInsets.all(16),
+      borderRadius: BorderRadius.circular(18),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 80,
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w500,
-                color: colorScheme.onSurface.withOpacity(0.6),
+          Row(
+            children: [
+              Icon(icon, size: 18, color: theme.colorScheme.onSurface.withOpacity(0.6)),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _CalcStep extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  const _CalcStep({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Expanded(
+      child: Column(
+        children: [
+          Container(
+            height: 36,
+            width: 36,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 18, color: color),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.6),
             ),
           ),
-          const Text(' = '),
-          Expanded(
-            child: Text(
-              value,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurface.withOpacity(0.8),
-              ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
