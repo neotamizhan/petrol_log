@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Fuel Analytics Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0d968b",
+                        "secondary": "#234845",
+                        "background-light": "#f6f8f8",
+                        "background-dark": "#0F1115",
+                        "surface-dark": "#161B22",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "sans": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px" },
+                    backgroundImage: {
+                        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        /* Custom scrollbar for clean look */
+        ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+        .glass-panel {
+            background: rgba(22, 27, 34, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glow-text {
+            text-shadow: 0 0 20px rgba(13, 150, 139, 0.5);
+        }
+        .glow-box {
+            box-shadow: 0 0 20px rgba(13, 150, 139, 0.1);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white min-h-screen flex flex-col antialiased">
+<!-- Sticky Header -->
+<header class="sticky top-0 z-50 flex items-center justify-between p-5 pb-2 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md">
+<button class="flex size-10 items-center justify-center rounded-full bg-white/5 hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-white">arrow_back</span>
+</button>
+<div class="flex flex-col items-center">
+<span class="text-xs uppercase tracking-widest text-gray-400 font-medium mb-1">Vehicle Stats</span>
+<div class="flex items-center gap-2 cursor-pointer group">
+<h1 class="text-xl font-bold tracking-tight">Tesla Model 3</h1>
+<span class="material-symbols-outlined text-primary text-sm group-hover:rotate-180 transition-transform">expand_more</span>
+</div>
+</div>
+<button class="flex size-10 items-center justify-center rounded-full bg-white/5 hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-white">settings</span>
+</button>
+</header>
+<!-- Main Scrollable Content -->
+<main class="flex-1 px-4 py-4 pb-24 space-y-6 overflow-y-auto">
+<!-- 2x2 Overview Grid -->
+<section class="grid grid-cols-2 gap-3">
+<!-- Card 1 -->
+<div class="glass-panel p-4 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group">
+<div class="absolute -right-4 -top-4 w-20 h-20 bg-primary/20 rounded-full blur-2xl group-hover:bg-primary/30 transition-all"></div>
+<div class="flex items-start justify-between">
+<span class="text-gray-400 text-sm font-medium">Total Fills</span>
+<span class="material-symbols-outlined text-primary/80">local_gas_station</span>
+</div>
+<div>
+<span class="text-3xl font-bold tracking-tight">42</span>
+<span class="text-xs text-green-400 ml-1 font-medium">↑ 2</span>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="glass-panel p-4 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group">
+<div class="absolute -right-4 -top-4 w-20 h-20 bg-blue-500/20 rounded-full blur-2xl group-hover:bg-blue-500/30 transition-all"></div>
+<div class="flex items-start justify-between">
+<span class="text-gray-400 text-sm font-medium">Distance</span>
+<span class="material-symbols-outlined text-blue-400/80">speed</span>
+</div>
+<div>
+<span class="text-3xl font-bold tracking-tight">12.4k</span>
+<span class="text-xs text-gray-400 ml-1">km</span>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="glass-panel p-4 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group">
+<div class="absolute -right-4 -top-4 w-20 h-20 bg-amber-500/20 rounded-full blur-2xl group-hover:bg-amber-500/30 transition-all"></div>
+<div class="flex items-start justify-between">
+<span class="text-gray-400 text-sm font-medium">Total Fuel</span>
+<span class="material-symbols-outlined text-amber-400/80">water_drop</span>
+</div>
+<div>
+<span class="text-3xl font-bold tracking-tight">850</span>
+<span class="text-xs text-gray-400 ml-1">L</span>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="glass-panel p-4 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group">
+<div class="absolute -right-4 -top-4 w-20 h-20 bg-purple-500/20 rounded-full blur-2xl group-hover:bg-purple-500/30 transition-all"></div>
+<div class="flex items-start justify-between">
+<span class="text-gray-400 text-sm font-medium">Duration</span>
+<span class="material-symbols-outlined text-purple-400/80">schedule</span>
+</div>
+<div>
+<span class="text-3xl font-bold tracking-tight">14</span>
+<span class="text-xs text-gray-400 ml-1">mo</span>
+</div>
+</div>
+</section>
+<!-- Mileage Radial Gauge Section -->
+<section class="glass-panel rounded-3xl p-6 relative overflow-hidden glow-box">
+<!-- Abstract background glow -->
+<div class="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none"></div>
+<div class="flex flex-col items-center justify-center relative z-10">
+<h2 class="text-sm uppercase tracking-widest text-gray-400 font-semibold mb-6">Efficiency Analysis</h2>
+<!-- Radial Gauge Graphic Placeholder -->
+<div class="relative w-64 h-32 mb-4">
+<!-- Gauge Background Arc -->
+<svg class="w-full h-full" viewbox="0 0 200 100">
+<path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#2a3038" stroke-linecap="round" stroke-width="12"></path>
+<path d="M 20 100 A 80 80 0 0 1 130 25" fill="none" stroke="#0d968b" stroke-dasharray="251" stroke-dashoffset="0" stroke-linecap="round" stroke-width="12">
+<animate attributename="stroke-dashoffset" dur="1s" fill="freeze" from="251" to="80"></animate>
+</path>
+<!-- Needle Center Point Glow -->
+<circle cx="100" cy="90" fill="url(#glowGradient)" opacity="0.4" r="40"></circle>
+<defs>
+<radialgradient id="glowGradient">
+<stop offset="0%" stop-color="#0d968b"></stop>
+<stop offset="100%" stop-color="transparent"></stop>
+</radialgradient>
+</defs>
+</svg>
+<div class="absolute bottom-0 inset-x-0 flex flex-col items-center">
+<span class="text-5xl font-bold text-white glow-text tracking-tighter">6.8</span>
+<span class="text-sm text-primary font-medium mt-1">L/100km</span>
+</div>
+</div>
+<div class="flex items-center justify-between w-full mt-4 gap-4">
+<div class="flex-1 bg-white/5 rounded-xl p-3 border border-white/5 flex flex-col items-center">
+<span class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Best Trip</span>
+<span class="text-xl font-bold text-green-400">5.2</span>
+<span class="text-[10px] text-gray-500">Highway</span>
+</div>
+<div class="flex-1 bg-white/5 rounded-xl p-3 border border-white/5 flex flex-col items-center">
+<span class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Worst Trip</span>
+<span class="text-xl font-bold text-amber-500">8.1</span>
+<span class="text-[10px] text-gray-500">City Traffic</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Spending Chart Section -->
+<section class="glass-panel rounded-3xl p-6">
+<div class="flex items-center justify-between mb-6">
+<h2 class="text-lg font-bold text-white">Monthly Spend</h2>
+<div class="flex items-center gap-1 text-sm text-primary bg-primary/10 px-3 py-1 rounded-full">
+<span>This Year</span>
+<span class="material-symbols-outlined text-sm">arrow_drop_down</span>
+</div>
+</div>
+<div class="h-48 w-full flex items-end justify-between gap-2">
+<!-- Bar 1 -->
+<div class="flex flex-col items-center gap-2 flex-1 group">
+<div class="w-full bg-white/5 rounded-t-lg relative h-48 flex items-end overflow-hidden">
+<div class="w-full bg-primary/40 group-hover:bg-primary/60 transition-all duration-500 rounded-t-lg" style="height: 45%;"></div>
+</div>
+<span class="text-xs text-gray-400 font-medium">Jan</span>
+</div>
+<!-- Bar 2 -->
+<div class="flex flex-col items-center gap-2 flex-1 group">
+<div class="w-full bg-white/5 rounded-t-lg relative h-48 flex items-end overflow-hidden">
+<div class="w-full bg-primary/40 group-hover:bg-primary/60 transition-all duration-500 rounded-t-lg" style="height: 60%;"></div>
+</div>
+<span class="text-xs text-gray-400 font-medium">Feb</span>
+</div>
+<!-- Bar 3 -->
+<div class="flex flex-col items-center gap-2 flex-1 group">
+<div class="w-full bg-white/5 rounded-t-lg relative h-48 flex items-end overflow-hidden">
+<div class="w-full bg-primary/40 group-hover:bg-primary/60 transition-all duration-500 rounded-t-lg" style="height: 35%;"></div>
+</div>
+<span class="text-xs text-gray-400 font-medium">Mar</span>
+</div>
+<!-- Bar 4 (Peak) -->
+<div class="flex flex-col items-center gap-2 flex-1 group">
+<div class="w-full bg-white/5 rounded-t-lg relative h-48 flex items-end overflow-hidden">
+<!-- Glow effect for peak month -->
+<div class="absolute inset-0 bg-gradient-to-t from-primary/20 to-transparent"></div>
+<div class="w-full bg-primary group-hover:bg-primary/90 transition-all duration-500 rounded-t-lg relative z-10" style="height: 85%;">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-white text-black text-[10px] font-bold px-2 py-1 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                $245
+                            </div>
+</div>
+</div>
+<span class="text-xs text-white font-bold">Apr</span>
+</div>
+<!-- Bar 5 -->
+<div class="flex flex-col items-center gap-2 flex-1 group">
+<div class="w-full bg-white/5 rounded-t-lg relative h-48 flex items-end overflow-hidden">
+<div class="w-full bg-primary/40 group-hover:bg-primary/60 transition-all duration-500 rounded-t-lg" style="height: 55%;"></div>
+</div>
+<span class="text-xs text-gray-400 font-medium">May</span>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation -->
+<nav class="fixed bottom-0 left-0 right-0 bg-surface-dark/95 backdrop-blur-lg border-t border-white/5 pb-6 pt-3 px-6 z-50">
+<ul class="flex justify-between items-center">
+<li>
+<button class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined filled">dashboard</span>
+<span class="text-[10px] font-medium">Stats</span>
+</button>
+</li>
+<li>
+<button class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+<span class="material-symbols-outlined">history</span>
+<span class="text-[10px] font-medium">History</span>
+</button>
+</li>
+<li>
+<!-- Floating Action Button effect -->
+<button class="flex items-center justify-center -mt-8 size-14 rounded-full bg-primary shadow-[0_0_20px_rgba(13,150,139,0.4)] text-white hover:scale-105 transition-transform active:scale-95">
+<span class="material-symbols-outlined text-3xl">add</span>
+</button>
+</li>
+<li>
+<button class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+<span class="material-symbols-outlined">directions_car</span>
+<span class="text-[10px] font-medium">Garage</span>
+</button>
+</li>
+<li>
+<button class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-medium">Profile</span>
+</button>
+</li>
+</ul>
+</nav>
+</body></html>

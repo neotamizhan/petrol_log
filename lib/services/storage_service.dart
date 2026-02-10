@@ -5,8 +5,10 @@ class StorageService {
   static const String _recordsKey = 'fill_records';
   static const String _fuelPriceKey = 'fuel_price_per_liter';
   static const String _currencyKey = 'currency_symbol';
+  static const String _themeModeKey = 'theme_mode';
   static const double defaultFuelPrice = 100.0; // Default price per liter
   static const String defaultCurrency = '₹'; // Default currency symbol
+  static const String defaultThemeMode = 'system';
 
   late SharedPreferences _prefs;
 
@@ -73,5 +75,14 @@ class StorageService {
   Future<void> setCurrency(String currency) async {
     await _prefs.setString(_currencyKey, currency);
   }
-}
 
+  /// Get saved theme mode
+  String getThemeMode() {
+    return _prefs.getString(_themeModeKey) ?? defaultThemeMode;
+  }
+
+  /// Set app theme mode
+  Future<void> setThemeMode(String themeMode) async {
+    await _prefs.setString(_themeModeKey, themeMode);
+  }
+}

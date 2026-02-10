@@ -34,6 +34,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _hasChanges = false;
   bool _isImporting = false;
   String _selectedCurrency = 'KWD';
+  ThemeMode _selectedThemeMode = ThemeMode.system;
 
   @override
   void initState() {
@@ -43,6 +44,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _priceController.text = provider.fuelPricePerLiter.toStringAsFixed(2);
       setState(() {
         _selectedCurrency = provider.currency;
+        _selectedThemeMode = provider.themeMode;
       });
     });
   }
@@ -60,6 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: isDark ? AppColors.backgroundDark : null,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
@@ -93,6 +96,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: 'Current Pump Price',
             ),
             GlassPanel(
+              color: isDark ? AppColors.settingsCardDark.withOpacity(0.92) : null,
+              border: Border.all(
+                color: isDark ? AppColors.primary.withOpacity(0.25) : AppColors.outlineLight,
+              ),
+              boxShadow: isDark
+                  ? [
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(0.2),
+                        blurRadius: 16,
+                        offset: const Offset(0, 8),
+                      ),
+                    ]
+                  : null,
               padding: const EdgeInsets.all(20),
               borderRadius: BorderRadius.circular(20),
               child: Column(
@@ -221,10 +237,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 24),
             _SectionHeader(
+              icon: Icons.palette_rounded,
+              title: 'Appearance',
+            ),
+            GlassPanel(
+              padding: const EdgeInsets.all(16),
+              borderRadius: BorderRadius.circular(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Theme Mode',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SegmentedButton<ThemeMode>(
+                    segments: const [
+                      ButtonSegment<ThemeMode>(
+                        value: ThemeMode.light,
+                        icon: Icon(Icons.light_mode_rounded),
+                        label: Text('Light'),
+                      ),
+                      ButtonSegment<ThemeMode>(
+                        value: ThemeMode.dark,
+                        icon: Icon(Icons.dark_mode_rounded),
+                        label: Text('Dark'),
+                      ),
+                      ButtonSegment<ThemeMode>(
+                        value: ThemeMode.system,
+                        icon: Icon(Icons.phone_iphone_rounded),
+                        label: Text('System'),
+                      ),
+                    ],
+                    selected: {_selectedThemeMode},
+                    showSelectedIcon: false,
+                    onSelectionChanged: (selection) {
+                      setState(() {
+                        _selectedThemeMode = selection.first;
+                        _hasChanges = true;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            _SectionHeader(
               icon: Icons.table_view_rounded,
               title: 'Data Management',
             ),
             GlassPanel(
+              color: isDark ? AppColors.settingsCardDark.withOpacity(0.45) : null,
               padding: const EdgeInsets.all(18),
               borderRadius: BorderRadius.circular(20),
               child: Column(
@@ -334,6 +399,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: 'How We Calculate',
             ),
             GlassPanel(
+              color: isDark ? AppColors.settingsCardDark.withOpacity(0.45) : null,
               padding: const EdgeInsets.all(18),
               borderRadius: BorderRadius.circular(20),
               child: Row(
@@ -387,6 +453,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final price = double.parse(_priceController.text);
     await provider.setFuelPrice(price);
     await provider.setCurrency(_selectedCurrency);
+    await provider.setThemeMode(_selectedThemeMode);
 
     setState(() => _hasChanges = false);
 
@@ -510,7 +577,9 @@ class _PreferenceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return GlassPanel(
+      color: isDark ? AppColors.settingsCardDark.withOpacity(0.45) : null,
       padding: const EdgeInsets.all(16),
       borderRadius: BorderRadius.circular(18),
       child: Column(

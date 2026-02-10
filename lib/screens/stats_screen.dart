@@ -18,6 +18,7 @@ class StatsScreen extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: isDark ? AppColors.dashboardBackgroundDark : null,
       body: SafeArea(
         child: Consumer<RecordsProvider>(
           builder: (context, provider, child) {
@@ -194,6 +195,7 @@ class _OverviewCard extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     return GlassPanel(
+      color: isDark ? const Color(0xB2161B22) : null,
       enableBlur: false,
       padding: const EdgeInsets.all(16),
       borderRadius: BorderRadius.circular(20),
@@ -248,6 +250,7 @@ class _EfficiencyPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final averageMileage = stats['averageMileage'] as double;
     final bestMileage = stats['bestMileage'] as double;
     final worstMileage = stats['worstMileage'] as double;
@@ -259,6 +262,7 @@ class _EfficiencyPanel extends StatelessWidget {
     final value = (averageMileage / maxMileage).clamp(0.0, 1.0);
 
     return GlassPanel(
+      color: isDark ? const Color(0xB2161B22) : null,
       padding: const EdgeInsets.all(20),
       borderRadius: BorderRadius.circular(24),
       child: Column(
@@ -402,6 +406,7 @@ class _MonthlySpendPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final monthlySpending = stats['monthlySpending'] as Map<String, double>;
 
     if (monthlySpending.isEmpty) {
@@ -416,6 +421,7 @@ class _MonthlySpendPanel extends StatelessWidget {
     final maxSpending = monthlySpending.values.reduce(math.max);
 
     return GlassPanel(
+      color: isDark ? const Color(0xB2161B22) : null,
       padding: const EdgeInsets.all(20),
       borderRadius: BorderRadius.circular(24),
       child: Column(
@@ -458,49 +464,58 @@ class _MonthlySpendPanel extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           SizedBox(
-            height: 140,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: recentMonths.map((monthKey) {
-                final spending = monthlySpending[monthKey] ?? 0;
-                final height = maxSpending > 0 ? (spending / maxSpending) * 120 : 0.0;
-                final isPeak = spending == maxSpending;
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          height: height + 8,
-                          decoration: BoxDecoration(
-                            color: isPeak ? AppColors.primary : AppColors.primary.withOpacity(0.4),
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
-                            boxShadow: isPeak
-                                ? [
-                                    BoxShadow(
-                                      color: AppColors.primary.withOpacity(0.3),
-                                      blurRadius: 16,
-                                    ),
-                                  ]
-                                : null,
-                          ),
+            height: 156,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                const labelGap = 8.0;
+                final labelFontSize = theme.textTheme.labelSmall?.fontSize ?? 11;
+                final scaledLabelHeight = MediaQuery.textScalerOf(context).scale(labelFontSize) + labelGap;
+                final maxBarHeight = math.max(30.0, constraints.maxHeight - scaledLabelHeight);
+
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: recentMonths.map((monthKey) {
+                    final spending = monthlySpending[monthKey] ?? 0;
+                    final barHeight = maxSpending > 0 ? (spending / maxSpending) * maxBarHeight : 0.0;
+                    final isPeak = spending == maxSpending;
+                    return Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Container(
+                              height: barHeight,
+                              decoration: BoxDecoration(
+                                color: isPeak ? AppColors.primary : AppColors.primary.withOpacity(0.4),
+                                borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                                boxShadow: isPeak
+                                    ? [
+                                        BoxShadow(
+                                          color: AppColors.primary.withOpacity(0.3),
+                                          blurRadius: 16,
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                            ),
+                            const SizedBox(height: labelGap),
+                            Text(
+                              _monthName(monthKey),
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: isPeak
+                                    ? theme.colorScheme.onSurface
+                                    : theme.colorScheme.onSurface.withOpacity(0.6),
+                                fontWeight: isPeak ? FontWeight.w700 : FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _monthName(monthKey),
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: isPeak
-                                ? theme.colorScheme.onSurface
-                                : theme.colorScheme.onSurface.withOpacity(0.6),
-                            fontWeight: isPeak ? FontWeight.w700 : FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                      ),
+                    );
+                  }).toList(),
                 );
-              }).toList(),
+              },
             ),
           ),
           const SizedBox(height: 12),

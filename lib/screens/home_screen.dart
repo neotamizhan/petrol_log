@@ -15,7 +15,9 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     return Scaffold(
+      backgroundColor: isDark ? AppColors.backgroundDark : null,
       body: SafeArea(
         child: Consumer<RecordsProvider>(
           builder: (context, provider, child) {
@@ -27,119 +29,144 @@ class HomeScreen extends StatelessWidget {
                 ? null
                 : DateTime.now().difference(latest.date).inDays;
 
-            return CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              height: 40,
-                              width: 40,
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(
-                                Icons.local_gas_station_rounded,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Petrol Log',
-                                  style: theme.textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                Text(
-                                  'Recent Records',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: colorScheme.onSurface.withOpacity(0.6),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+            return Stack(
+              children: [
+                if (isDark)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: _DotPatternPainter(
+                          dotColor: AppColors.surfaceDarkElevated.withOpacity(0.58),
+                          spacing: 20,
                         ),
-                        Row(
-                          children: [
-                            _IconBubble(
-                              icon: Icons.bar_chart_rounded,
-                              onTap: () => _navigateToStats(context),
-                            ),
-                            const SizedBox(width: 8),
-                            _IconBubble(
-                              icon: Icons.settings_rounded,
-                              onTap: () => _navigateToSettings(context),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                    child: _SummaryCard(
-                      currency: provider.currency,
-                      currentOdometer: latest?.odometerKm ?? 0,
-                      averageMileage: (stats['averageMileage'] as double?) ?? 0,
-                      lastRefuelDays: lastRefuelDays,
-                    ),
-                  ),
-                ),
-                if (provider.isLoading)
-                  const SliverFillRemaining(
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (provider.records.isEmpty)
-                  SliverFillRemaining(
-                    child: _EmptyState(colorScheme: colorScheme),
-                  )
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.only(bottom: 110),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final record = provider.records[index];
-                          final recordStats = provider.getRecordStats(record);
-
-                          return TweenAnimationBuilder<double>(
-                            tween: Tween(begin: 0, end: 1),
-                            duration: Duration(milliseconds: 300 + (index * 50)),
-                            curve: Curves.easeOutCubic,
-                            builder: (context, value, child) {
-                              return Transform.translate(
-                                offset: Offset(0, 16 * (1 - value)),
-                                child: Opacity(
-                                  opacity: value,
-                                  child: child,
-                                ),
-                              );
-                            },
-                            child: RecordCard(
-                              record: record,
-                              stats: recordStats,
-                              currency: provider.currency,
-                              onDelete: () => provider.deleteRecord(record.id),
-                              onEdit: () => _navigateToEditRecord(context, record),
-                            ),
-                          );
-                        },
-                        childCount: provider.records.length,
                       ),
                     ),
                   ),
+                CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.backgroundDark.withOpacity(0.78) : Colors.transparent,
+                            borderRadius: BorderRadius.circular(16),
+                            border: isDark
+                                ? Border.all(color: AppColors.outlineDark.withOpacity(0.5))
+                                : null,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    height: 40,
+                                    width: 40,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Icon(
+                                      Icons.local_gas_station_rounded,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Petrol Log',
+                                        style: theme.textTheme.titleLarge?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Recent Records',
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: colorScheme.onSurface.withOpacity(0.6),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  _IconBubble(
+                                    icon: Icons.bar_chart_rounded,
+                                    onTap: () => _navigateToStats(context),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _IconBubble(
+                                    icon: Icons.settings_rounded,
+                                    onTap: () => _navigateToSettings(context),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                        child: _SummaryCard(
+                          currency: provider.currency,
+                          currentOdometer: latest?.odometerKm ?? 0,
+                          averageMileage: (stats['averageMileage'] as double?) ?? 0,
+                          lastRefuelDays: lastRefuelDays,
+                        ),
+                      ),
+                    ),
+                    if (provider.isLoading)
+                      const SliverFillRemaining(
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else if (provider.records.isEmpty)
+                      SliverFillRemaining(
+                        child: _EmptyState(colorScheme: colorScheme),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.only(bottom: 110),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final record = provider.records[index];
+                              final recordStats = provider.getRecordStats(record);
+
+                              return TweenAnimationBuilder<double>(
+                                tween: Tween(begin: 0, end: 1),
+                                duration: Duration(milliseconds: 300 + (index * 50)),
+                                curve: Curves.easeOutCubic,
+                                builder: (context, value, child) {
+                                  return Transform.translate(
+                                    offset: Offset(0, 16 * (1 - value)),
+                                    child: Opacity(
+                                      opacity: value,
+                                      child: child,
+                                    ),
+                                  );
+                                },
+                                child: RecordCard(
+                                  record: record,
+                                  stats: recordStats,
+                                  currency: provider.currency,
+                                  onDelete: () => provider.deleteRecord(record.id),
+                                  onEdit: () => _navigateToEditRecord(context, record),
+                                ),
+                              );
+                            },
+                            childCount: provider.records.length,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ],
             );
           },
@@ -419,5 +446,30 @@ class _SummaryMetric extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _DotPatternPainter extends CustomPainter {
+  final Color dotColor;
+  final double spacing;
+
+  const _DotPatternPainter({
+    required this.dotColor,
+    required this.spacing,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = dotColor;
+    for (double y = 0; y < size.height; y += spacing) {
+      for (double x = 0; x < size.width; x += spacing) {
+        canvas.drawCircle(Offset(x, y), 0.8, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DotPatternPainter oldDelegate) {
+    return oldDelegate.dotColor != dotColor || oldDelegate.spacing != spacing;
   }
 }

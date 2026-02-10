@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Welcome Onboarding</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0d968b",
+                        "background-light": "#f6f8f8",
+                        "background-dark": "#102220", // Deep teal-black for dark mode
+                        "background-accent": "#1a3330", // Slightly lighter for cards in dark mode
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "2xl": "2rem",
+                        "full": "9999px"
+                    },
+                    boxShadow: {
+                        'glow': '0 0 40px -10px rgba(13, 150, 139, 0.3)',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: "Space Grotesk", sans-serif;
+        }
+        /* Custom scrollbar hide for cleaner mobile look */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-gray-900 dark:text-white h-screen w-full overflow-hidden flex flex-col justify-between font-display transition-colors duration-300">
+<!-- Status Bar Area (Mock) -->
+<div class="w-full h-12 flex justify-between items-center px-6 pt-2 shrink-0 z-10">
+<span class="text-sm font-medium">9:41</span>
+<div class="flex gap-1.5">
+<span class="material-symbols-outlined text-lg">signal_cellular_alt</span>
+<span class="material-symbols-outlined text-lg">wifi</span>
+<span class="material-symbols-outlined text-lg">battery_full</span>
+</div>
+</div>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col items-center justify-center w-full max-w-md mx-auto px-6 relative">
+<!-- Logo / Brand Header -->
+<div class="absolute top-4 left-0 right-0 flex justify-center items-center gap-2 opacity-90">
+<div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-xl">local_gas_station</span>
+</div>
+<span class="text-xl font-bold tracking-tight">FuelPro</span>
+</div>
+<!-- Hero Graphic Container with Glow -->
+<div class="relative w-full aspect-square max-w-[340px] flex items-center justify-center mb-8">
+<!-- Ambient Glow -->
+<div class="absolute inset-0 bg-primary/20 rounded-full blur-3xl scale-75 dark:bg-primary/10"></div>
+<!-- Main Illustration -->
+<!-- Using an abstract isometric car illustration URL -->
+<div class="relative w-full h-full bg-center bg-contain bg-no-repeat z-10 drop-shadow-2xl transition-transform hover:scale-105 duration-700 ease-out" data-alt="Isometric 3D illustration of a futuristic car with efficiency charts" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBnIDc20SGVcCY0d8O0NxICJAXVqrH1KXY8wZ-haFXE9i7CBdqvewjwg6vw84dor_vhQzjFc4lKjxufYst0GefLY6XZ_ne1M68hoQwV6bdJpCKsB23CqC0D1f0QpiZlTWArB5WH4wHoQDlOmoCKnuToLuyrBGFUObsbxeofgn1RUmui2Mqyp9n4Phcvmq-p_5TqEMY3KqZYBULhjirjwPhUP_Lc1MRV0brsTXxqKsSZ6t8iX_9EOmorqbA4IEe8rXUAa5bp6ZLsX0U");'></div>
+<!-- Floating Elements / Badges -->
+<div class="absolute -right-2 top-10 bg-white dark:bg-background-accent p-3 rounded-2xl shadow-xl z-20 animate-bounce" style="animation-duration: 3s;">
+<span class="material-symbols-outlined text-primary text-2xl">trending_up</span>
+</div>
+<div class="absolute -left-2 bottom-12 bg-white dark:bg-background-accent p-3 rounded-2xl shadow-xl z-20 animate-bounce" style="animation-duration: 4s;">
+<span class="material-symbols-outlined text-orange-500 text-2xl">bolt</span>
+</div>
+</div>
+<!-- Text Content -->
+<div class="flex flex-col gap-4 text-center z-10 max-w-xs">
+<h1 class="text-4xl font-bold leading-tight tracking-tight text-gray-900 dark:text-white">
+                Smart Fuel <br/>
+<span class="text-primary">Tracking</span>
+</h1>
+<p class="text-gray-500 dark:text-gray-400 text-lg font-normal leading-relaxed">
+                Monitor efficiency, track costs, and drive smarter with real-time analytics.
+            </p>
+</div>
+<!-- Pagination Dots -->
+<div class="flex flex-row items-center justify-center gap-2 py-8 mt-2">
+<div class="h-2 w-6 rounded-full bg-primary transition-all duration-300"></div>
+<div class="h-2 w-2 rounded-full bg-gray-300 dark:bg-gray-700"></div>
+<div class="h-2 w-2 rounded-full bg-gray-300 dark:bg-gray-700"></div>
+</div>
+</div>
+<!-- Bottom Action Area -->
+<div class="w-full px-6 pb-10 pt-4 bg-gradient-to-t from-background-light via-background-light to-transparent dark:from-background-dark dark:via-background-dark shrink-0 max-w-md mx-auto">
+<button class="group relative w-full flex items-center justify-center gap-2 bg-primary hover:bg-teal-600 text-white text-lg font-bold py-4 px-6 rounded-xl shadow-lg shadow-primary/30 transition-all active:scale-[0.98]">
+<span>Get Started</span>
+<span class="material-symbols-outlined text-xl group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+<p class="mt-4 text-center text-sm text-gray-400">
+            Already have an account? <a class="text-primary font-semibold hover:underline" href="#">Log in</a>
+</p>
+<!-- Home Indicator Spacer for iOS -->
+<div class="h-1 w-1/3 bg-gray-300 dark:bg-gray-700 rounded-full mx-auto mt-6"></div>
+</div>
+</body></html>

@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import '../models/fill_record.dart';
 import '../services/storage_service.dart';
 
@@ -8,6 +8,7 @@ class RecordsProvider with ChangeNotifier {
   List<FillRecord> _records = [];
   double _fuelPricePerLiter = StorageService.defaultFuelPrice;
   String _currency = StorageService.defaultCurrency;
+  ThemeMode _themeMode = ThemeMode.system;
   bool _isLoading = true;
 
   RecordsProvider(this._storageService);
@@ -15,6 +16,7 @@ class RecordsProvider with ChangeNotifier {
   List<FillRecord> get records => _records;
   double get fuelPricePerLiter => _fuelPricePerLiter;
   String get currency => _currency;
+  ThemeMode get themeMode => _themeMode;
   bool get isLoading => _isLoading;
 
   /// Get records sorted by date (oldest first for calculations)
@@ -41,6 +43,7 @@ class RecordsProvider with ChangeNotifier {
     _records = _storageService.getRecords();
     _fuelPricePerLiter = _storageService.getFuelPrice();
     _currency = _storageService.getCurrency();
+    _themeMode = _parseThemeMode(_storageService.getThemeMode());
     
     _isLoading = false;
     notifyListeners();
@@ -79,6 +82,35 @@ class RecordsProvider with ChangeNotifier {
     await _storageService.setCurrency(currency);
     _currency = currency;
     notifyListeners();
+  }
+
+  /// Update app theme mode
+  Future<void> setThemeMode(ThemeMode mode) async {
+    await _storageService.setThemeMode(_themeModeToString(mode));
+    _themeMode = mode;
+    notifyListeners();
+  }
+
+  ThemeMode _parseThemeMode(String mode) {
+    switch (mode) {
+      case 'light':
+        return ThemeMode.light;
+      case 'dark':
+        return ThemeMode.dark;
+      default:
+        return ThemeMode.system;
+    }
+  }
+
+  String _themeModeToString(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:
+        return 'light';
+      case ThemeMode.dark:
+        return 'dark';
+      case ThemeMode.system:
+        return 'system';
+    }
   }
 
   /// Get stats for a specific record
@@ -198,4 +230,3 @@ class RecordsProvider with ChangeNotifier {
     };
   }
 }
-

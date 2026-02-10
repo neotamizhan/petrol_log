@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Add Fuel Record</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0d968b",
+                        "primary-dark": "#0a756c",
+                        "accent": "#f59e0b", // Amber for accents
+                        "background-light": "#f6f8f8",
+                        "background-dark": "#102220",
+                        "surface-dark": "#1A2E2C",
+                        "surface-input": "#112221",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #234845;
+            border-radius: 3px;
+        }
+        .digital-glow {
+            text-shadow: 0 0 10px rgba(13, 150, 139, 0.4);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display min-h-screen flex flex-col antialiased selection:bg-primary selection:text-white">
+<!-- Header -->
+<header class="sticky top-0 z-50 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md border-b border-gray-200 dark:border-[#234845]">
+<div class="flex items-center justify-between px-4 py-3">
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-gray-800 dark:text-white">
+<span class="material-symbols-outlined">close</span>
+</button>
+<h1 class="text-lg font-bold text-gray-900 dark:text-white tracking-tight">Add Fuel Record</h1>
+<div class="w-10"></div> <!-- Spacer for visual balance -->
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col p-4 gap-6 max-w-lg mx-auto w-full pb-28">
+<!-- Digital Pump Display / Live Preview -->
+<section class="relative overflow-hidden rounded-xl bg-surface-dark border border-[#234845] shadow-lg">
+<!-- Background gradient effect -->
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full blur-3xl -mr-10 -mt-10"></div>
+<div class="p-6 flex flex-col items-center justify-center text-center gap-1">
+<p class="text-sm font-medium text-gray-400 uppercase tracking-widest">Calculated Price / L</p>
+<div class="flex items-baseline gap-1 mt-1">
+<span class="text-4xl sm:text-5xl font-bold text-primary digital-glow">$1.65</span>
+<span class="text-xl text-primary/70 font-medium">/L</span>
+</div>
+<div class="flex items-center gap-2 mt-3 px-3 py-1 rounded-full bg-[#112221] border border-[#234845]">
+<span class="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
+<p class="text-xs font-medium text-accent">Live Calculation</p>
+</div>
+</div>
+<!-- Progress/Efficiency visual bar -->
+<div class="h-1 w-full bg-[#112221] flex">
+<div class="h-full bg-gradient-to-r from-primary/50 to-primary w-[65%]"></div>
+</div>
+</section>
+<!-- Form Fields -->
+<div class="flex flex-col gap-4">
+<!-- Date & Time Row -->
+<div class="grid grid-cols-2 gap-4">
+<button class="group relative flex flex-col gap-2 p-4 rounded-xl bg-white dark:bg-surface-dark border border-gray-200 dark:border-[#234845] hover:border-primary dark:hover:border-primary transition-all active:scale-[0.98]">
+<div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+<span class="material-symbols-outlined text-xl">calendar_today</span>
+<span class="text-xs font-bold uppercase tracking-wide">Date</span>
+</div>
+<span class="text-lg font-bold text-gray-900 dark:text-white text-left">Oct 24, 2023</span>
+</button>
+<button class="group relative flex flex-col gap-2 p-4 rounded-xl bg-white dark:bg-surface-dark border border-gray-200 dark:border-[#234845] hover:border-primary dark:hover:border-primary transition-all active:scale-[0.98]">
+<div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+<span class="material-symbols-outlined text-xl">schedule</span>
+<span class="text-xs font-bold uppercase tracking-wide">Time</span>
+</div>
+<span class="text-lg font-bold text-gray-900 dark:text-white text-left">14:30</span>
+</button>
+</div>
+<!-- Odometer Card -->
+<div class="relative group">
+<label class="absolute -top-3 left-4 px-2 bg-background-light dark:bg-background-dark text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider z-10 group-focus-within:text-primary transition-colors" for="odometer">
+                    Odometer
+                </label>
+<div class="flex items-center bg-white dark:bg-surface-dark border border-gray-200 dark:border-[#234845] rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-primary focus-within:border-primary transition-all h-20 shadow-sm">
+<div class="pl-5 pr-2 py-4 text-gray-400">
+<span class="material-symbols-outlined text-2xl">speed</span>
+</div>
+<input class="flex-1 bg-transparent border-none text-right text-3xl font-bold text-gray-900 dark:text-white placeholder-gray-700 focus:ring-0 p-0 h-full" id="odometer" placeholder="0" type="number" value="12050"/>
+<div class="px-5 py-4 bg-gray-50 dark:bg-[#152624] h-full flex items-center border-l border-gray-200 dark:border-[#234845]">
+<span class="text-lg font-bold text-accent">km</span>
+</div>
+</div>
+</div>
+<!-- Cost & Volume Row -->
+<div class="flex flex-col sm:flex-row gap-4">
+<!-- Total Cost -->
+<div class="relative group flex-1">
+<label class="absolute -top-3 left-4 px-2 bg-background-light dark:bg-background-dark text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider z-10 group-focus-within:text-primary transition-colors" for="cost">
+                        Total Cost
+                    </label>
+<div class="flex items-center bg-white dark:bg-surface-dark border border-gray-200 dark:border-[#234845] rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-primary focus-within:border-primary transition-all h-20 shadow-sm">
+<div class="pl-5 pr-2 py-4 text-primary font-bold text-2xl">
+                            $
+                        </div>
+<input class="flex-1 bg-transparent border-none text-right text-3xl font-bold text-gray-900 dark:text-white placeholder-gray-700 focus:ring-0 p-0 pr-5 h-full" id="cost" placeholder="0.00" type="number" value="85.00"/>
+</div>
+</div>
+<!-- Volume -->
+<div class="relative group flex-1">
+<label class="absolute -top-3 left-4 px-2 bg-background-light dark:bg-background-dark text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider z-10 group-focus-within:text-primary transition-colors" for="volume">
+                        Volume
+                    </label>
+<div class="flex items-center bg-white dark:bg-surface-dark border border-gray-200 dark:border-[#234845] rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-primary focus-within:border-primary transition-all h-20 shadow-sm">
+<div class="pl-5 pr-2 py-4 text-gray-400">
+<span class="material-symbols-outlined text-2xl">local_gas_station</span>
+</div>
+<input class="flex-1 bg-transparent border-none text-right text-3xl font-bold text-gray-900 dark:text-white placeholder-gray-700 focus:ring-0 p-0 h-full" id="volume" placeholder="0.0" type="number" value="51.5"/>
+<div class="px-5 py-4 bg-gray-50 dark:bg-[#152624] h-full flex items-center border-l border-gray-200 dark:border-[#234845]">
+<span class="text-lg font-bold text-accent">L</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Notes Card -->
+<div class="relative group mt-2">
+<label class="absolute -top-3 left-4 px-2 bg-background-light dark:bg-background-dark text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider z-10 group-focus-within:text-primary transition-colors" for="notes">
+                    Notes
+                </label>
+<div class="bg-white dark:bg-surface-dark border border-gray-200 dark:border-[#234845] rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-primary focus-within:border-primary transition-all shadow-sm">
+<textarea class="w-full bg-transparent border-none text-base text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-600 focus:ring-0 p-5 resize-none" id="notes" placeholder="Station brand, tire pressure, or trip details..." rows="3"></textarea>
+</div>
+</div>
+</div>
+</main>
+<!-- Sticky Bottom Action -->
+<div class="fixed bottom-0 left-0 w-full bg-gradient-to-t from-background-light dark:from-background-dark to-transparent pt-10 pb-6 px-4 pointer-events-none">
+<div class="max-w-lg mx-auto pointer-events-auto">
+<button class="w-full flex items-center justify-center gap-3 bg-primary hover:bg-primary-dark text-white font-bold text-lg py-4 rounded-xl shadow-lg shadow-primary/20 transition-all transform active:scale-[0.98]">
+<span class="material-symbols-outlined">save</span>
+<span>Save Record</span>
+</button>
+</div>
+</div>
+</body></html>

@@ -10,10 +10,14 @@ class AppColors {
 
   static const backgroundLight = Color(0xFFF6F8F8);
   static const backgroundDark = Color(0xFF102220);
+  static const dashboardBackgroundDark = Color(0xFF0F1115);
 
   static const surfaceLight = Color(0xFFFFFFFF);
   static const surfaceDark = Color(0xFF162E2B);
   static const surfaceDarkElevated = Color(0xFF1C3835);
+  static const addFormSurfaceDark = Color(0xFF1A2E2C);
+  static const inputSurfaceDark = Color(0xFF112221);
+  static const settingsCardDark = Color(0xFF193331);
 
   static const outlineLight = Color(0xFFE2E8F0);
   static const outlineDark = Color(0xFF234845);

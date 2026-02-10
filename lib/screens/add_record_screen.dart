@@ -39,6 +39,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
     final dateFormat = DateFormat('MMM dd, yyyy');
 
     return Scaffold(
+      backgroundColor: isDark ? AppColors.backgroundDark : null,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
@@ -56,7 +57,14 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                 return Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.surfaceDark : Colors.white,
+                    gradient: isDark
+                        ? const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [AppColors.addFormSurfaceDark, Color(0xFF17312E)],
+                          )
+                        : null,
+                    color: isDark ? null : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: isDark ? AppColors.outlineDark : AppColors.outlineLight,
@@ -277,7 +285,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.surfaceDarkElevated : AppColors.backgroundLight,
+                  color: isDark ? AppColors.inputSurfaceDark : AppColors.backgroundLight,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isDark ? AppColors.outlineDark : AppColors.outlineLight,
@@ -305,8 +313,8 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                colorScheme.background.withOpacity(0),
-                colorScheme.background,
+                (isDark ? AppColors.backgroundDark : AppColors.backgroundLight).withOpacity(0),
+                isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
               ],
             ),
           ),
@@ -439,7 +447,7 @@ class _TapFieldCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.surfaceDark : Colors.white,
+          color: isDark ? AppColors.addFormSurfaceDark : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isDark ? AppColors.outlineDark : AppColors.outlineLight,
@@ -533,7 +541,7 @@ class _TextFieldShell extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDarkElevated : AppColors.backgroundLight,
+        color: isDark ? AppColors.inputSurfaceDark : AppColors.backgroundLight,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark ? AppColors.outlineDark : AppColors.outlineLight,
