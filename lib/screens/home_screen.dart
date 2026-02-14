@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/records_provider.dart';
 import '../widgets/record_card.dart';
@@ -28,6 +29,7 @@ class HomeScreen extends StatelessWidget {
             final lastRefuelDays = latest == null
                 ? null
                 : DateTime.now().difference(latest.date).inDays;
+            final forecast = provider.getRefillForecast();
 
             return Stack(
               children: [
@@ -36,7 +38,8 @@ class HomeScreen extends StatelessWidget {
                     child: IgnorePointer(
                       child: CustomPaint(
                         painter: _DotPatternPainter(
-                          dotColor: AppColors.surfaceDarkElevated.withOpacity(0.58),
+                          dotColor:
+                              AppColors.surfaceDarkElevated.withOpacity(0.58),
                           spacing: 20,
                         ),
                       ),
@@ -48,12 +51,17 @@ class HomeScreen extends StatelessWidget {
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 6),
                           decoration: BoxDecoration(
-                            color: isDark ? AppColors.backgroundDark.withOpacity(0.78) : Colors.transparent,
+                            color: isDark
+                                ? AppColors.backgroundDark.withOpacity(0.78)
+                                : Colors.transparent,
                             borderRadius: BorderRadius.circular(16),
                             border: isDark
-                                ? Border.all(color: AppColors.outlineDark.withOpacity(0.5))
+                                ? Border.all(
+                                    color:
+                                        AppColors.outlineDark.withOpacity(0.5))
                                 : null,
                           ),
                           child: Row(
@@ -65,7 +73,8 @@ class HomeScreen extends StatelessWidget {
                                     height: 40,
                                     width: 40,
                                     decoration: BoxDecoration(
-                                      color: AppColors.primary.withOpacity(0.15),
+                                      color:
+                                          AppColors.primary.withOpacity(0.15),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: const Icon(
@@ -75,18 +84,22 @@ class HomeScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(width: 12),
                                   Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Petrol Log',
-                                        style: theme.textTheme.titleLarge?.copyWith(
+                                        style: theme.textTheme.titleLarge
+                                            ?.copyWith(
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
                                       Text(
                                         'Recent Records',
-                                        style: theme.textTheme.bodySmall?.copyWith(
-                                          color: colorScheme.onSurface.withOpacity(0.6),
+                                        style:
+                                            theme.textTheme.bodySmall?.copyWith(
+                                          color: colorScheme.onSurface
+                                              .withOpacity(0.6),
                                         ),
                                       ),
                                     ],
@@ -117,8 +130,18 @@ class HomeScreen extends StatelessWidget {
                         child: _SummaryCard(
                           currency: provider.currency,
                           currentOdometer: latest?.odometerKm ?? 0,
-                          averageMileage: (stats['averageMileage'] as double?) ?? 0,
+                          averageMileage:
+                              (stats['averageMileage'] as double?) ?? 0,
                           lastRefuelDays: lastRefuelDays,
+                        ),
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+                        child: _RefillRadarCard(
+                          forecast: forecast,
+                          currency: provider.currency,
                         ),
                       ),
                     ),
@@ -137,11 +160,13 @@ class HomeScreen extends StatelessWidget {
                           delegate: SliverChildBuilderDelegate(
                             (context, index) {
                               final record = provider.records[index];
-                              final recordStats = provider.getRecordStats(record);
+                              final recordStats =
+                                  provider.getRecordStats(record);
 
                               return TweenAnimationBuilder<double>(
                                 tween: Tween(begin: 0, end: 1),
-                                duration: Duration(milliseconds: 300 + (index * 50)),
+                                duration:
+                                    Duration(milliseconds: 300 + (index * 50)),
                                 curve: Curves.easeOutCubic,
                                 builder: (context, value, child) {
                                   return Transform.translate(
@@ -156,8 +181,10 @@ class HomeScreen extends StatelessWidget {
                                   record: record,
                                   stats: recordStats,
                                   currency: provider.currency,
-                                  onDelete: () => provider.deleteRecord(record.id),
-                                  onEdit: () => _navigateToEditRecord(context, record),
+                                  onDelete: () =>
+                                      provider.deleteRecord(record.id),
+                                  onEdit: () =>
+                                      _navigateToEditRecord(context, record),
                                 ),
                               );
                             },
@@ -244,16 +271,16 @@ class _EmptyState extends StatelessWidget {
             Text(
               'No Fill Records Yet',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+                    fontWeight: FontWeight.w700,
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
               'Tap the button below to log your first petrol fill',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurface.withOpacity(0.6),
-              ),
+                    color: colorScheme.onSurface.withOpacity(0.6),
+                  ),
             ),
           ],
         ),
@@ -281,7 +308,9 @@ class _IconBubble extends StatelessWidget {
           color: isDark ? AppColors.surfaceDarkElevated : Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isDark ? AppColors.outlineDark.withOpacity(0.7) : AppColors.outlineLight,
+            color: isDark
+                ? AppColors.outlineDark.withOpacity(0.7)
+                : AppColors.outlineLight,
           ),
         ),
         child: Icon(
@@ -383,7 +412,9 @@ class _SummaryCard extends StatelessWidget {
               Expanded(
                 child: _SummaryMetric(
                   label: 'Avg. Mileage',
-                  value: averageMileage > 0 ? '${averageMileage.toStringAsFixed(1)} km/L' : '--',
+                  value: averageMileage > 0
+                      ? '${averageMileage.toStringAsFixed(1)} km/L'
+                      : '--',
                 ),
               ),
               const SizedBox(width: 12),
@@ -432,16 +463,298 @@ class _SummaryMetric extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.white70,
-            ),
+                  color: Colors.white70,
+                ),
           ),
           const SizedBox(height: 4),
           Text(
             value,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RefillRadarCard extends StatelessWidget {
+  final Map<String, dynamic>? forecast;
+  final String currency;
+
+  const _RefillRadarCard({
+    required this.forecast,
+    required this.currency,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    if (forecast == null) {
+      return Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.surfaceDark : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark ? AppColors.outlineDark : AppColors.outlineLight,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              height: 44,
+              width: 44,
+              decoration: BoxDecoration(
+                color: AppColors.accentBlue.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child:
+                  const Icon(Icons.radar_rounded, color: AppColors.accentBlue),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Refuel Radar unlocks after your next fill. Add more records for AI-style predictions.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  height: 1.35,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final status = forecast!['status'] as String;
+    final daysUntilRefill = forecast!['daysUntilRefill'] as int;
+    final nextRefillDate = forecast!['nextRefillDate'] as DateTime;
+    final projectedOdometerKm =
+        (forecast!['projectedOdometerKm'] as num).toDouble();
+    final expectedCost = (forecast!['expectedCost'] as num).toDouble();
+    final confidence = (forecast!['confidence'] as num).toDouble();
+    final forecastDays = forecast!['forecastDays'] as int;
+    final intervalCount = forecast!['intervalCount'] as int;
+    final progress =
+        ((forecast!['progress'] as num).toDouble()).clamp(0.0, 1.0);
+    final dateFormat = DateFormat('EEE, dd MMM');
+
+    final statusText = daysUntilRefill < 0
+        ? '${daysUntilRefill.abs()} days overdue'
+        : daysUntilRefill == 0
+            ? 'Refuel due today'
+            : 'Refuel in $daysUntilRefill day${daysUntilRefill == 1 ? '' : 's'}';
+
+    final statusColor = _statusColor(status);
+    final confidenceLabel = _confidenceLabel(confidence);
+    final confidenceColor = _confidenceColor(confidence);
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: _gradientForStatus(status),
+        ),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: statusColor.withOpacity(0.35),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                height: 40,
+                width: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.radar_rounded,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Refuel Radar',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.17),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '$confidenceLabel confidence',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            statusText,
+            style: theme.textTheme.headlineSmall?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w700,
             ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Expected around ${dateFormat.format(nextRefillDate)} based on your last $intervalCount fills.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: Colors.white.withOpacity(0.86),
+            ),
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              backgroundColor: Colors.white.withOpacity(0.22),
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _ForecastMetric(
+                  label: 'Expected Cost',
+                  value: '$currency${expectedCost.toStringAsFixed(0)}',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _ForecastMetric(
+                  label: 'Target Odo',
+                  value: '${projectedOdometerKm.toStringAsFixed(0)} km',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _ForecastMetric(
+                  label: 'Cycle',
+                  value: '$forecastDays days',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Model stability: $confidenceLabel',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: confidenceColor,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Color> _gradientForStatus(String status) {
+    switch (status) {
+      case 'overdue':
+        return const [Color(0xFFEF4444), Color(0xFFB91C1C)];
+      case 'soon':
+        return const [Color(0xFFF59E0B), Color(0xFFD97706)];
+      default:
+        return const [AppColors.accentBlue, AppColors.primaryDark];
+    }
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'overdue':
+        return const Color(0xFFEF4444);
+      case 'soon':
+        return const Color(0xFFF59E0B);
+      default:
+        return AppColors.accentBlue;
+    }
+  }
+
+  String _confidenceLabel(double confidence) {
+    if (confidence >= 0.75) {
+      return 'High';
+    }
+    if (confidence >= 0.5) {
+      return 'Medium';
+    }
+    return 'Low';
+  }
+
+  Color _confidenceColor(double confidence) {
+    if (confidence >= 0.75) {
+      return const Color(0xFFD6F6E7);
+    }
+    if (confidence >= 0.5) {
+      return const Color(0xFFFFF2CC);
+    }
+    return const Color(0xFFFEE2E2);
+  }
+}
+
+class _ForecastMetric extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ForecastMetric({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.16),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
           ),
         ],
       ),

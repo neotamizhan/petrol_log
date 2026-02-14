@@ -13,6 +13,7 @@ void main() {
   setUp(() {
     mockStorageService = MockStorageService();
     when(() => mockStorageService.init()).thenAnswer((_) async {});
+    when(() => mockStorageService.getThemeMode()).thenReturn('system');
   });
 
   group('RecordsProvider', () {
@@ -211,6 +212,97 @@ void main() {
 
         expect(monthlySpending['2024-01'], 900); // 400 + 500
         expect(monthlySpending['2024-02'], 600);
+      });
+    });
+
+    group('getRefillForecast', () {
+      test('returns null when there are not enough records', () async {
+        final records = [
+          FillRecord(
+              id: '1', date: DateTime(2024, 1, 1), odometerKm: 1000, cost: 500),
+        ];
+
+        when(() => mockStorageService.getRecords()).thenReturn(records);
+        when(() => mockStorageService.getFuelPrice()).thenReturn(100.0);
+        when(() => mockStorageService.getCurrency()).thenReturn('₹');
+
+        provider = RecordsProvider(mockStorageService);
+        await provider.init();
+
+        final forecast = provider.getRefillForecast(now: DateTime(2024, 1, 2));
+        expect(forecast, isNull);
+      });
+
+      test('predicts refill timing, cost and odometer from recent intervals',
+          () async {
+        final records = [
+          FillRecord(
+              id: '1', date: DateTime(2024, 1, 1), odometerKm: 1000, cost: 400),
+          FillRecord(
+              id: '2', date: DateTime(2024, 1, 8), odometerKm: 1200, cost: 420),
+          FillRecord(
+              id: '3',
+              date: DateTime(2024, 1, 15),
+              odometerKm: 1400,
+              cost: 410),
+          FillRecord(
+              id: '4',
+              date: DateTime(2024, 1, 22),
+              odometerKm: 1600,
+              cost: 430),
+        ];
+
+        when(() => mockStorageService.getRecords()).thenReturn(records);
+        when(() => mockStorageService.getFuelPrice()).thenReturn(100.0);
+        when(() => mockStorageService.getCurrency()).thenReturn('₹');
+
+        provider = RecordsProvider(mockStorageService);
+        await provider.init();
+
+        final forecast = provider.getRefillForecast(now: DateTime(2024, 1, 24));
+        expect(forecast, isNotNull);
+
+        final result = forecast!;
+        expect(result['forecastDays'], 7);
+        expect(result['daysUntilRefill'], 5);
+        expect(result['status'], 'on_track');
+        expect((result['projectedOdometerKm'] as double), closeTo(1800, 0.01));
+        expect((result['expectedCost'] as double), closeTo(420, 12));
+        expect((result['confidence'] as double), greaterThan(0.7));
+      });
+
+      test('marks forecast as overdue when predicted date has passed',
+          () async {
+        final records = [
+          FillRecord(
+              id: '1', date: DateTime(2024, 1, 1), odometerKm: 1000, cost: 400),
+          FillRecord(
+              id: '2', date: DateTime(2024, 1, 8), odometerKm: 1200, cost: 420),
+          FillRecord(
+              id: '3',
+              date: DateTime(2024, 1, 15),
+              odometerKm: 1400,
+              cost: 410),
+          FillRecord(
+              id: '4',
+              date: DateTime(2024, 1, 22),
+              odometerKm: 1600,
+              cost: 430),
+        ];
+
+        when(() => mockStorageService.getRecords()).thenReturn(records);
+        when(() => mockStorageService.getFuelPrice()).thenReturn(100.0);
+        when(() => mockStorageService.getCurrency()).thenReturn('₹');
+
+        provider = RecordsProvider(mockStorageService);
+        await provider.init();
+
+        final forecast = provider.getRefillForecast(now: DateTime(2024, 2, 4));
+        expect(forecast, isNotNull);
+
+        final result = forecast!;
+        expect(result['status'], 'overdue');
+        expect(result['daysUntilRefill'], lessThan(0));
       });
     });
   });
