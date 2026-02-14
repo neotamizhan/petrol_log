@@ -17,3 +17,4 @@
 ## Notes
 - Generated from one brand master icon for consistency.
 - iPad screenshots included because the current app supports iPad.
+- Brand icon source: assets/branding/app_icon_source.png

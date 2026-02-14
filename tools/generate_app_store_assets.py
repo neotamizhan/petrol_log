@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Iterable, Optional, Sequence
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont, ImageOps
 
@@ -23,6 +23,7 @@ OUTPUT_DIR = ROOT / "output" / "app_store"
 ICON_DIR = OUTPUT_DIR / "icon"
 SCREENSHOT_DIR = OUTPUT_DIR / "screenshots"
 METADATA_DIR = OUTPUT_DIR / "metadata"
+SOURCE_ICON_PATH = ROOT / "assets" / "branding" / "app_icon_source.png"
 
 IOS_ICONSET_JSON = ROOT / "ios" / "Runner" / "Assets.xcassets" / "AppIcon.appiconset" / "Contents.json"
 IOS_ICONSET_DIR = IOS_ICONSET_JSON.parent
@@ -279,15 +280,20 @@ def save_android_and_web_icons(master: Image.Image) -> None:
         resized.save(path, format="PNG")
 
 
-def save_launch_images(master: Image.Image) -> None:
+def save_launch_images(master: Image.Image, icon_with_alpha: Optional[Image.Image] = None) -> None:
     for path, size in LAUNCH_IMAGE_PATHS.items():
         w, h = size
         launch = gradient_background(w, h, ("#06191A", "#0B4A48", "#0A2424", "#0F6B65")).convert("RGB")
         icon_size = int(min(w, h) * 0.33)
-        icon = master.resize((icon_size, icon_size), Image.Resampling.LANCZOS)
+        source = icon_with_alpha if icon_with_alpha is not None else master.convert("RGBA")
+        icon = source.resize((icon_size, icon_size), Image.Resampling.LANCZOS)
+        # Ensure corners blend cleanly on launch backgrounds.
+        corner_mask = rounded_rect_mask((icon_size, icon_size), radius=max(12, int(icon_size * 0.18)))
+        icon_alpha = ImageChops.multiply(icon.split()[-1], corner_mask)
+        icon.putalpha(icon_alpha)
         x = (w - icon_size) // 2
         y = int(h * 0.28)
-        launch.paste(icon, (x, y))
+        launch.paste(icon, (x, y), icon)
         launch.save(path, format="PNG")
 
 
@@ -570,6 +576,7 @@ Set fuel price, currency, and appearance in a few taps.
 ## Notes
 - Generated from one brand master icon for consistency.
 - iPad screenshots included because the current app supports iPad.
+- Brand icon source: assets/branding/app_icon_source.png
 """
 
     (METADATA_DIR / "app_store_listing.md").write_text(listing, encoding="utf-8")
@@ -578,7 +585,35 @@ Set fuel price, currency, and appearance in a few taps.
 
 
 def generate_icon_files() -> Image.Image:
-    master = make_master_icon(size=1024)
+    if not SOURCE_ICON_PATH.exists():
+        raise FileNotFoundError(
+            f"Missing source icon: {SOURCE_ICON_PATH}. Add your brand icon before generating."
+        )
+
+    with Image.open(SOURCE_ICON_PATH) as source_icon:
+        source_rgba = source_icon.convert("RGBA")
+        source_rgb = source_rgba.convert("RGB")
+
+        # Trim bright backdrop from exported mockup-style source images.
+        gray = ImageOps.grayscale(source_rgb)
+        non_backdrop_mask = gray.point(lambda p: 255 if p < 245 else 0)
+        bbox = non_backdrop_mask.getbbox()
+        if bbox is not None:
+            source_rgb = source_rgb.crop(bbox)
+            source_rgba = source_rgba.crop(bbox)
+
+        master = ImageOps.fit(
+            source_rgb,
+            (1024, 1024),
+            method=Image.Resampling.LANCZOS,
+            centering=(0.5, 0.5),
+        )
+        master_rgba = ImageOps.fit(
+            source_rgba,
+            (1024, 1024),
+            method=Image.Resampling.LANCZOS,
+            centering=(0.5, 0.5),
+        )
     master.save(ICON_DIR / "petrol_log_icon_1024.png", format="PNG")
 
     preview = Image.new("RGB", (1600, 900), "#F2F7F6")
@@ -600,7 +635,7 @@ def generate_icon_files() -> Image.Image:
     subtitle_font = load_font(28, bold=False)
     draw = ImageDraw.Draw(preview)
     title = "Petrol Log Icon"
-    subtitle = "Minimal mark: fuel drop + road precision"
+    subtitle = "Source: user-provided brand icon"
     tbox = draw.textbbox((0, 0), title, font=label_font)
     sbox = draw.textbbox((0, 0), subtitle, font=subtitle_font)
     draw.text(((preview.width - (tbox[2] - tbox[0])) // 2, 70), title, font=label_font, fill=(12, 41, 40))
@@ -609,7 +644,7 @@ def generate_icon_files() -> Image.Image:
 
     save_ios_icons(master)
     save_android_and_web_icons(master)
-    save_launch_images(master)
+    save_launch_images(master, master_rgba)
     return master
 
 
