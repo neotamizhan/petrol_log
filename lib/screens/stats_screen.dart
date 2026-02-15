@@ -27,7 +27,64 @@ class StatsScreen extends StatelessWidget {
             final totalRecords = stats['totalRecords'] as int;
 
             if (totalRecords == 0) {
-              return _EmptyState(colorScheme: colorScheme);
+              return CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _CircleAction(
+                            icon: Icons.arrow_back_rounded,
+                            onTap: () => Navigator.of(context).pop(),
+                          ),
+                          Column(
+                            children: [
+                              Text(
+                                'Vehicle Stats',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: colorScheme.onSurface.withOpacity(0.5),
+                                  letterSpacing: 1.2,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Text(
+                                    'Petrol Log',
+                                    style: theme.textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Icon(
+                                    Icons.expand_more_rounded,
+                                    size: 18,
+                                    color: AppColors.primary,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          _CircleAction(
+                            icon: Icons.settings_rounded,
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const SettingsScreen(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SliverFillRemaining(
+                    child: _EmptyState(colorScheme: colorScheme),
+                  ),
+                ],
+              );
             }
 
             return CustomScrollView(
