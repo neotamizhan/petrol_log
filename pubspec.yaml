@@ -3,7 +3,7 @@ description: A Flutter app to log petrol filling records and track mileage.
 
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
