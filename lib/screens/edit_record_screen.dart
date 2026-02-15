@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../models/fill_record.dart';
 import '../providers/records_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/currency_utils.dart';
 
 class EditRecordScreen extends StatefulWidget {
   final FillRecord record;
@@ -28,10 +29,16 @@ class _EditRecordScreenState extends State<EditRecordScreen> {
   void initState() {
     super.initState();
     _odometerController = TextEditingController(text: widget.record.odometerKm.toStringAsFixed(0));
-    _costController = TextEditingController(text: widget.record.cost.toStringAsFixed(2));
+    _costController = TextEditingController(); // Initialize empty
     _notesController = TextEditingController(text: widget.record.notes);
     _selectedDate = widget.record.date;
     _selectedTime = TimeOfDay.fromDateTime(widget.record.date);
+    
+    // Set cost text after frame to access provider
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<RecordsProvider>();
+      _costController.text = CurrencyUtils.formatAmount(widget.record.cost, provider.currency);
+    });
   }
 
   @override
@@ -147,10 +154,12 @@ class _EditRecordScreenState extends State<EditRecordScreen> {
                       controller: _costController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                        FilteringTextInputFormatter.allow(
+                          RegExp(CurrencyUtils.getInputPattern(provider.currency)),
+                        ),
                       ],
-                      decoration: const InputDecoration(
-                        hintText: '0.00',
+                      decoration: InputDecoration(
+                        hintText: CurrencyUtils.getPlaceholder(provider.currency),
                         border: InputBorder.none,
                       ),
                       style: theme.textTheme.headlineSmall?.copyWith(

@@ -6,6 +6,7 @@ import '../providers/records_provider.dart';
 import '../models/fill_record.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_panel.dart';
+import '../utils/currency_utils.dart';
 import 'settings_screen.dart';
 
 class StatsScreen extends StatelessWidget {
@@ -104,7 +105,7 @@ class StatsScreen extends StatelessWidget {
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                      child: _InsightStrip(stats: stats),
+                      child: _InsightStrip(stats: stats, currency: provider.currency),
                     ),
                   ),
               ],
@@ -520,7 +521,7 @@ class _MonthlySpendPanel extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Peak month: $currency${maxSpending.toStringAsFixed(0)}',
+            'Peak month: $currency${CurrencyUtils.formatAmount(maxSpending, currency)}',
             style: theme.textTheme.labelSmall?.copyWith(
               color: theme.colorScheme.onSurface.withOpacity(0.6),
             ),
@@ -541,8 +542,9 @@ class _MonthlySpendPanel extends StatelessWidget {
 
 class _InsightStrip extends StatelessWidget {
   final Map<String, dynamic> stats;
+  final String currency;
 
-  const _InsightStrip({required this.stats});
+  const _InsightStrip({required this.stats, required this.currency});
 
   @override
   Widget build(BuildContext context) {
@@ -569,7 +571,7 @@ class _InsightStrip extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Average fill cost is ${averageFillCost.toStringAsFixed(0)}. Track trends to optimize your spend.',
+              'Average fill cost is ${CurrencyUtils.formatAmount(averageFillCost, currency)}. Track trends to optimize your spend.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.7),
               ),

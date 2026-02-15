@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/fill_record.dart';
 import '../providers/records_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/currency_utils.dart';
 
 class AddRecordScreen extends StatefulWidget {
   const AddRecordScreen({super.key});
@@ -93,7 +94,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            '${provider.currency}${provider.fuelPricePerLiter.toStringAsFixed(2)}',
+                            '${provider.currency}${CurrencyUtils.formatAmount(provider.fuelPricePerLiter, provider.currency)}',
                             style: theme.textTheme.headlineLarge?.copyWith(
                               fontWeight: FontWeight.w700,
                               color: AppColors.primary,
@@ -217,10 +218,12 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                             controller: _costController,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             inputFormatters: [
-                              FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                              FilteringTextInputFormatter.allow(
+                                RegExp(CurrencyUtils.getInputPattern(provider.currency)),
+                              ),
                             ],
-                            decoration: const InputDecoration(
-                              hintText: '0.00',
+                            decoration: InputDecoration(
+                              hintText: CurrencyUtils.getPlaceholder(provider.currency),
                               border: InputBorder.none,
                             ),
                             style: theme.textTheme.headlineSmall?.copyWith(

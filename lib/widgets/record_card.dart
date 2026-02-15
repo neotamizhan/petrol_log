@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/fill_record.dart';
 import '../theme/app_theme.dart';
+import '../utils/currency_utils.dart';
 
 class RecordCard extends StatelessWidget {
   final FillRecord record;
@@ -178,7 +179,7 @@ class RecordCard extends StatelessWidget {
                                     ),
                                     const SizedBox(height: 6),
                                     Text(
-                                      '$currency${record.cost.toStringAsFixed(2)}',
+                                      '$currency${CurrencyUtils.formatAmount(record.cost, currency)}',
                                       style: theme.textTheme.headlineSmall?.copyWith(
                                         fontWeight: FontWeight.w700,
                                         color: isDark ? AppColors.accentAmber : colorScheme.onSurface,
