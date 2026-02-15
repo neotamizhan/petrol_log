@@ -8,6 +8,7 @@ import 'edit_record_screen.dart';
 import 'settings_screen.dart';
 import 'stats_screen.dart';
 import '../theme/app_theme.dart';
+import '../utils/currency_utils.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -646,7 +647,7 @@ class _RefillRadarCard extends StatelessWidget {
               Expanded(
                 child: _ForecastMetric(
                   label: 'Expected Cost',
-                  value: '$currency${expectedCost.toStringAsFixed(0)}',
+                  value: '$currency${CurrencyUtils.formatAmount(expectedCost, currency)}',
                 ),
               ),
               const SizedBox(width: 10),
