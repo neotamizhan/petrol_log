@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/records_provider.dart';
 import '../services/import_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/currency_utils.dart';
 import '../widgets/glass_panel.dart';
 
 const List<Map<String, String>> _currencies = [
@@ -41,7 +42,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<RecordsProvider>();
-      _priceController.text = provider.fuelPricePerLiter.toStringAsFixed(2);
+      _priceController.text = CurrencyUtils.formatAmount(
+        provider.fuelPricePerLiter,
+        provider.currency,
+      );
       setState(() {
         _selectedCurrency = provider.currency;
         _selectedThemeMode = provider.themeMode;
@@ -126,7 +130,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     controller: _priceController,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                      FilteringTextInputFormatter.allow(
+                        RegExp(CurrencyUtils.getInputPattern(_selectedCurrency)),
+                      ),
                     ],
                     style: theme.textTheme.displaySmall?.copyWith(
                       fontWeight: FontWeight.w700,
@@ -215,6 +221,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             setState(() {
                               _selectedCurrency = value;
                               _hasChanges = true;
+                              // Update price controller text to match new currency's decimal places
+                              final currentPrice = double.tryParse(_priceController.text);
+                              if (currentPrice != null) {
+                                _priceController.text = CurrencyUtils.formatAmount(
+                                  currentPrice,
+                                  value,
+                                );
+                              }
                             });
                           }
                         },
