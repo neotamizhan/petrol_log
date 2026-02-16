@@ -7,10 +7,10 @@ import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   final storageService = StorageService();
   await storageService.init();
-  
+
   runApp(
     ChangeNotifierProvider(
       create: (_) => RecordsProvider(storageService)..init(),

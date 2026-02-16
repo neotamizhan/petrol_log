@@ -1,14 +1,17 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+
 import '../models/fill_record.dart';
+import '../models/fuel_type.dart';
 import '../services/storage_service.dart';
 
 class RecordsProvider with ChangeNotifier {
   final StorageService _storageService;
 
   List<FillRecord> _records = [];
-  double _fuelPricePerLiter = StorageService.defaultFuelPrice;
+  List<FuelType> _fuelTypes = [];
+  String _selectedFuelTypeId = FuelType.defaultId;
   String _currency = StorageService.defaultCurrency;
   ThemeMode _themeMode = ThemeMode.system;
   bool _isLoading = true;
@@ -16,7 +19,23 @@ class RecordsProvider with ChangeNotifier {
   RecordsProvider(this._storageService);
 
   List<FillRecord> get records => _records;
-  double get fuelPricePerLiter => _fuelPricePerLiter;
+  List<FuelType> get fuelTypes => List<FuelType>.unmodifiable(_fuelTypes);
+  List<FuelType> get activeFuelTypes =>
+      _fuelTypes.where((fuelType) => fuelType.active).toList();
+  String get selectedFuelTypeId => _selectedFuelTypeId;
+
+  FuelType? get selectedFuelType {
+    for (final fuelType in _fuelTypes) {
+      if (fuelType.id == _selectedFuelTypeId) {
+        return fuelType;
+      }
+    }
+    return _fuelTypes.isNotEmpty ? _fuelTypes.first : null;
+  }
+
+  /// Backward-compatible getter used by existing UI.
+  double get fuelPricePerLiter =>
+      selectedFuelType?.pricePerLiter ?? StorageService.defaultFuelPrice;
   String get currency => _currency;
   ThemeMode get themeMode => _themeMode;
   bool get isLoading => _isLoading;
@@ -28,11 +47,48 @@ class RecordsProvider with ChangeNotifier {
     return sorted;
   }
 
+  FuelType? getFuelTypeById(String id) {
+    for (final fuelType in _fuelTypes) {
+      if (fuelType.id == id) {
+        return fuelType;
+      }
+    }
+    return null;
+  }
+
+  String getFuelTypeName(String id) {
+    final fuelType = getFuelTypeById(id);
+    if (fuelType != null) {
+      return fuelType.name;
+    }
+    return FuelType.defaultName;
+  }
+
+  double getFuelPriceForFuelTypeId(String id) {
+    final fuelType = getFuelTypeById(id);
+    if (fuelType != null && fuelType.pricePerLiter > 0) {
+      return fuelType.pricePerLiter;
+    }
+
+    final selected = selectedFuelType;
+    if (selected != null && selected.pricePerLiter > 0) {
+      return selected.pricePerLiter;
+    }
+
+    return StorageService.defaultFuelPrice;
+  }
+
+  double getFuelPriceForRecord(FillRecord record) {
+    return getFuelPriceForFuelTypeId(record.fuelTypeId);
+  }
+
   /// Get the previous record for a given record (by date)
-  FillRecord? getPreviousRecord(FillRecord record) {
-    final sortedRecords = recordsByDateAsc;
+  FillRecord? getPreviousRecord(FillRecord record, {String? fuelTypeId}) {
+    final sortedRecords = _filteredRecordsByFuelType(fuelTypeId);
     final index = sortedRecords.indexWhere((r) => r.id == record.id);
-    if (index <= 0) return null;
+    if (index <= 0) {
+      return null;
+    }
     return sortedRecords[index - 1];
   }
 
@@ -42,25 +98,118 @@ class RecordsProvider with ChangeNotifier {
     notifyListeners();
 
     await _storageService.init();
-    _records = _storageService.getRecords();
-    _fuelPricePerLiter = _storageService.getFuelPrice();
+    _fuelTypes = _sanitizeFuelTypes(_storageService.getFuelTypes());
+    _selectedFuelTypeId = _resolveSelectedFuelTypeId(
+      _storageService.getSelectedFuelTypeId(),
+    );
+    _records = _normalizeRecordFuelTypes(_storageService.getRecords());
     _currency = _storageService.getCurrency();
     _themeMode = _parseThemeMode(_storageService.getThemeMode());
+
+    await _storageService.saveFuelTypes(_fuelTypes);
+    await _storageService.setSelectedFuelTypeId(_selectedFuelTypeId);
+    await _storageService.saveRecords(_records);
 
     _isLoading = false;
     notifyListeners();
   }
 
+  Future<void> _persistFuelTypeSettings() async {
+    await _storageService.saveFuelTypes(_fuelTypes);
+    await _storageService.setSelectedFuelTypeId(_selectedFuelTypeId);
+  }
+
+  List<FuelType> _sanitizeFuelTypes(List<FuelType> incoming) {
+    final Map<String, FuelType> byId = {};
+
+    for (final fuelType in incoming) {
+      final normalizedId = FuelType.normalizeId(fuelType.id);
+      final normalizedName = fuelType.name.trim().isNotEmpty
+          ? fuelType.name.trim()
+          : FuelType.defaultName;
+      final normalizedPrice = fuelType.pricePerLiter > 0
+          ? fuelType.pricePerLiter
+          : StorageService.defaultFuelPrice;
+
+      byId[normalizedId] = fuelType.copyWith(
+        id: normalizedId,
+        name: normalizedName,
+        pricePerLiter: normalizedPrice,
+      );
+    }
+
+    if (!byId.containsKey(FuelType.defaultId)) {
+      byId[FuelType.defaultId] = FuelType(
+        id: FuelType.defaultId,
+        name: FuelType.defaultName,
+        pricePerLiter: StorageService.defaultFuelPrice,
+        active: true,
+      );
+    }
+
+    final result = byId.values.toList();
+    if (result.every((fuelType) => !fuelType.active)) {
+      result[0] = result[0].copyWith(active: true);
+    }
+
+    return result;
+  }
+
+  String _resolveSelectedFuelTypeId(String preferredId) {
+    final preferred = getFuelTypeById(preferredId);
+    if (preferred != null && preferred.active) {
+      return preferred.id;
+    }
+
+    final active = activeFuelTypes;
+    if (active.isNotEmpty) {
+      return active.first.id;
+    }
+
+    return _fuelTypes.first.id;
+  }
+
+  List<FillRecord> _normalizeRecordFuelTypes(List<FillRecord> incoming) {
+    final validIds = _fuelTypes.map((fuelType) => fuelType.id).toSet();
+    final fallbackId = _selectedFuelTypeId;
+
+    return incoming.map((record) {
+      if (validIds.contains(record.fuelTypeId)) {
+        return record;
+      }
+      return record.copyWith(fuelTypeId: fallbackId);
+    }).toList();
+  }
+
+  FillRecord _normalizeRecord(FillRecord record) {
+    final valid =
+        _fuelTypes.any((fuelType) => fuelType.id == record.fuelTypeId);
+    if (valid) {
+      return record;
+    }
+    return record.copyWith(fuelTypeId: _selectedFuelTypeId);
+  }
+
+  List<FillRecord> _filteredRecordsByFuelType(String? fuelTypeId) {
+    final sorted = recordsByDateAsc;
+    if (fuelTypeId == null || fuelTypeId == 'all') {
+      return sorted;
+    }
+    return sorted.where((record) => record.fuelTypeId == fuelTypeId).toList();
+  }
+
   /// Add a new fill record
   Future<void> addRecord(FillRecord record) async {
-    await _storageService.addRecord(record);
+    final normalized = _normalizeRecord(record);
+    await _storageService.addRecord(normalized);
     _records = _storageService.getRecords();
     notifyListeners();
   }
 
   /// Update an existing record
   Future<void> updateRecord(FillRecord record) async {
-    await _storageService.updateRecord(record);
+    final normalized = _normalizeRecord(record);
+    await _storageService.updateRecord(normalized);
     _records = _storageService.getRecords();
     notifyListeners();
   }
@@ -72,10 +221,101 @@ class RecordsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Update fuel price per liter
+  Future<void> setSelectedFuelType(String fuelTypeId) async {
+    _selectedFuelTypeId = _resolveSelectedFuelTypeId(fuelTypeId);
+    await _storageService.setSelectedFuelTypeId(_selectedFuelTypeId);
+    notifyListeners();
+  }
+
+  Future<void> addFuelType({
+    required String name,
+    required double pricePerLiter,
+  }) async {
+    final baseId = FuelType.normalizeId(name);
+    String nextId = baseId;
+    int suffix = 2;
+    while (_fuelTypes.any((fuelType) => fuelType.id == nextId)) {
+      nextId = '${baseId}_$suffix';
+      suffix++;
+    }
+
+    _fuelTypes = [
+      ..._fuelTypes,
+      FuelType(
+        id: nextId,
+        name: name.trim(),
+        pricePerLiter: pricePerLiter,
+        active: true,
+      ),
+    ];
+
+    await _persistFuelTypeSettings();
+    notifyListeners();
+  }
+
+  Future<void> updateFuelType(FuelType updatedFuelType) async {
+    _fuelTypes = _fuelTypes.map((fuelType) {
+      if (fuelType.id == updatedFuelType.id) {
+        return updatedFuelType.copyWith(
+          name: updatedFuelType.name.trim(),
+          pricePerLiter: updatedFuelType.pricePerLiter > 0
+              ? updatedFuelType.pricePerLiter
+              : fuelType.pricePerLiter,
+        );
+      }
+      return fuelType;
+    }).toList();
+
+    _fuelTypes = _sanitizeFuelTypes(_fuelTypes);
+    _selectedFuelTypeId = _resolveSelectedFuelTypeId(_selectedFuelTypeId);
+    await _persistFuelTypeSettings();
+    notifyListeners();
+  }
+
+  Future<void> deleteFuelType(String fuelTypeId) async {
+    if (_fuelTypes.length <= 1) {
+      return;
+    }
+
+    final usedByRecords =
+        _records.any((record) => record.fuelTypeId == fuelTypeId);
+    if (usedByRecords) {
+      _fuelTypes = _fuelTypes.map((fuelType) {
+        if (fuelType.id == fuelTypeId) {
+          return fuelType.copyWith(active: false);
+        }
+        return fuelType;
+      }).toList();
+    } else {
+      _fuelTypes =
+          _fuelTypes.where((fuelType) => fuelType.id != fuelTypeId).toList();
+    }
+
+    _fuelTypes = _sanitizeFuelTypes(_fuelTypes);
+    _selectedFuelTypeId = _resolveSelectedFuelTypeId(_selectedFuelTypeId);
+    await _persistFuelTypeSettings();
+    notifyListeners();
+  }
+
+  bool hasRecordsForFuelType(String fuelTypeId) {
+    return _records.any((record) => record.fuelTypeId == fuelTypeId);
+  }
+
+  /// Backward-compatible method: updates currently selected fuel type price.
   Future<void> setFuelPrice(double price) async {
-    await _storageService.setFuelPrice(price);
-    _fuelPricePerLiter = price;
+    if (price <= 0) {
+      return;
+    }
+
+    final selectedId = _selectedFuelTypeId;
+    _fuelTypes = _fuelTypes.map((fuelType) {
+      if (fuelType.id == selectedId) {
+        return fuelType.copyWith(pricePerLiter: price);
+      }
+      return fuelType;
+    }).toList();
+
+    await _persistFuelTypeSettings();
     notifyListeners();
   }
 
@@ -116,21 +356,27 @@ class RecordsProvider with ChangeNotifier {
   }
 
   /// Get stats for a specific record
-  Map<String, dynamic> getRecordStats(FillRecord record) {
-    final previousRecord = getPreviousRecord(record);
+  Map<String, dynamic> getRecordStats(FillRecord record, {String? fuelTypeId}) {
+    final previousRecord = getPreviousRecord(record, fuelTypeId: fuelTypeId);
+    final pricePerLiter = getFuelPriceForRecord(record);
 
     return {
       'distanceKm': record.getDistanceSinceLastFill(previousRecord),
-      'fuelLiters': record.getFuelAddedLiters(_fuelPricePerLiter),
-      'mileage': record.getMileage(previousRecord, _fuelPricePerLiter),
+      'fuelLiters': record.getFuelAddedLiters(pricePerLiter),
+      'mileage': record.getMileage(previousRecord, pricePerLiter),
       'daysSinceLastFill': record.getDaysSinceLastFill(previousRecord),
       'isFirstRecord': previousRecord == null,
+      'fuelTypeId': record.fuelTypeId,
+      'fuelTypeName': getFuelTypeName(record.fuelTypeId),
+      'pricePerLiter': pricePerLiter,
     };
   }
 
-  /// Get overall statistics for all records
-  Map<String, dynamic> getOverallStats() {
-    if (_records.isEmpty) {
+  /// Get overall statistics for all records, or a specific fuel type.
+  Map<String, dynamic> getOverallStats({String? fuelTypeId}) {
+    final filteredRecords = _filteredRecordsByFuelType(fuelTypeId);
+
+    if (filteredRecords.isEmpty) {
       return {
         'totalRecords': 0,
         'totalSpent': 0.0,
@@ -147,10 +393,12 @@ class RecordsProvider with ChangeNotifier {
         'firstFillDate': null,
         'lastFillDate': null,
         'totalDays': 0,
+        'fuelTypeFilter': fuelTypeId,
       };
     }
 
-    final sortedRecords = recordsByDateAsc;
+    final sortedRecords = List<FillRecord>.from(filteredRecords)
+      ..sort((a, b) => a.date.compareTo(b.date));
 
     double totalSpent = 0;
     double totalFuelLiters = 0;
@@ -167,12 +415,12 @@ class RecordsProvider with ChangeNotifier {
     for (int i = 0; i < sortedRecords.length; i++) {
       final record = sortedRecords[i];
       final previousRecord = i > 0 ? sortedRecords[i - 1] : null;
+      final pricePerLiter = getFuelPriceForRecord(record);
 
       totalSpent += record.cost;
-      final fuelLiters = record.getFuelAddedLiters(_fuelPricePerLiter);
+      final fuelLiters = record.getFuelAddedLiters(pricePerLiter);
       totalFuelLiters += fuelLiters;
 
-      // Monthly spending
       final monthKey =
           '${record.date.year}-${record.date.month.toString().padLeft(2, '0')}';
       monthlySpending[monthKey] =
@@ -182,7 +430,7 @@ class RecordsProvider with ChangeNotifier {
         final distance = record.getDistanceSinceLastFill(previousRecord);
         totalDistance += distance;
 
-        final mileage = record.getMileage(previousRecord, _fuelPricePerLiter);
+        final mileage = record.getMileage(previousRecord, pricePerLiter);
         if (mileage > 0) {
           mileages.add(mileage);
 
@@ -216,7 +464,7 @@ class RecordsProvider with ChangeNotifier {
     final totalDays = lastDate.difference(firstDate).inDays;
 
     return {
-      'totalRecords': _records.length,
+      'totalRecords': filteredRecords.length,
       'totalSpent': totalSpent,
       'totalFuelLiters': totalFuelLiters,
       'totalDistance': totalDistance,
@@ -225,20 +473,22 @@ class RecordsProvider with ChangeNotifier {
       'worstMileage': worstMileage == double.infinity ? 0.0 : worstMileage,
       'bestMileageRecord': bestMileageRecord,
       'worstMileageRecord': worstMileageRecord,
-      'averageFillCost':
-          _records.isNotEmpty ? totalSpent / _records.length : 0.0,
+      'averageFillCost': filteredRecords.isNotEmpty
+          ? totalSpent / filteredRecords.length
+          : 0.0,
       'averageDaysBetweenFills': averageDaysBetweenFills,
       'monthlySpending': monthlySpending,
       'firstFillDate': firstDate,
       'lastFillDate': lastDate,
       'totalDays': totalDays,
+      'fuelTypeFilter': fuelTypeId,
     };
   }
 
   /// Predict when and where the next refill will likely happen.
   /// Returns null if there is not enough valid interval data.
-  Map<String, dynamic>? getRefillForecast({DateTime? now}) {
-    final sortedRecords = recordsByDateAsc;
+  Map<String, dynamic>? getRefillForecast({DateTime? now, String? fuelTypeId}) {
+    final sortedRecords = _filteredRecordsByFuelType(fuelTypeId);
     if (sortedRecords.length < 2) {
       return null;
     }
@@ -253,13 +503,15 @@ class RecordsProvider with ChangeNotifier {
         continue;
       }
 
-      final liters = current.getFuelAddedLiters(_fuelPricePerLiter);
+      final pricePerLiter = getFuelPriceForRecord(current);
+      final liters = current.getFuelAddedLiters(pricePerLiter);
       final mileage = liters > 0 ? distance / liters : 0.0;
       intervals.add({
         'days': days.toDouble(),
         'distance': distance,
         'mileage': mileage,
         'cost': current.cost,
+        'price': pricePerLiter,
       });
     }
 
@@ -274,6 +526,7 @@ class RecordsProvider with ChangeNotifier {
     final recentDistances =
         recentIntervals.map((i) => i['distance'] ?? 0).toList();
     final recentCosts = recentIntervals.map((i) => i['cost'] ?? 0).toList();
+    final recentPrices = recentIntervals.map((i) => i['price'] ?? 0).toList();
     final recentMileages = recentIntervals
         .map((i) => i['mileage'] ?? 0)
         .where((mileage) => mileage > 0)
@@ -286,8 +539,11 @@ class RecordsProvider with ChangeNotifier {
     final weightedMileage =
         recentMileages.isNotEmpty ? _weightedAverage(recentMileages) : 0.0;
     final weightedCost = _weightedAverage(recentCosts);
+    final weightedPrice = _weightedAverage(recentPrices);
+
     final expectedCost = weightedMileage > 0
-        ? (forecastDistanceKm / weightedMileage) * _fuelPricePerLiter
+        ? (forecastDistanceKm / weightedMileage) *
+            (weightedPrice > 0 ? weightedPrice : fuelPricePerLiter)
         : weightedCost;
 
     final latestRecord = sortedRecords.last;

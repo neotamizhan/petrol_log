@@ -23,21 +23,25 @@ class _EditRecordScreenState extends State<EditRecordScreen> {
   late TextEditingController _notesController;
   late DateTime _selectedDate;
   late TimeOfDay _selectedTime;
+  late String _selectedFuelTypeId;
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    _odometerController = TextEditingController(text: widget.record.odometerKm.toStringAsFixed(0));
+    _odometerController = TextEditingController(
+        text: widget.record.odometerKm.toStringAsFixed(0));
     _costController = TextEditingController(); // Initialize empty
     _notesController = TextEditingController(text: widget.record.notes);
     _selectedDate = widget.record.date;
     _selectedTime = TimeOfDay.fromDateTime(widget.record.date);
-    
+    _selectedFuelTypeId = widget.record.fuelTypeId;
+
     // Set cost text after frame to access provider
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<RecordsProvider>();
-      _costController.text = CurrencyUtils.formatAmount(widget.record.cost, provider.currency);
+      _costController.text =
+          CurrencyUtils.formatAmount(widget.record.cost, provider.currency);
     });
   }
 
@@ -81,7 +85,8 @@ class _EditRecordScreenState extends State<EditRecordScreen> {
                 color: isDark ? AppColors.surfaceDark : Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isDark ? AppColors.outlineDark : AppColors.outlineLight,
+                  color:
+                      isDark ? AppColors.outlineDark : AppColors.outlineLight,
                 ),
               ),
               child: Column(
@@ -111,6 +116,84 @@ class _EditRecordScreenState extends State<EditRecordScreen> {
               ),
             ),
             const SizedBox(height: 20),
+            Consumer<RecordsProvider>(
+              builder: (context, provider, child) {
+                final availableFuelTypes = provider.fuelTypes
+                    .where((fuelType) =>
+                        fuelType.active || fuelType.id == _selectedFuelTypeId)
+                    .toList();
+
+                if (availableFuelTypes.isEmpty) {
+                  return _InputCard(
+                    label: 'Fuel Type',
+                    icon: Icons.local_fire_department_rounded,
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.surfaceDarkElevated
+                            : AppColors.backgroundLight,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.outlineDark
+                              : AppColors.outlineLight,
+                        ),
+                      ),
+                      child: const Text(
+                          'No active fuel types. Add one in Settings.'),
+                    ),
+                  );
+                }
+
+                final dropdownValue = availableFuelTypes.any(
+                  (fuelType) => fuelType.id == _selectedFuelTypeId,
+                )
+                    ? _selectedFuelTypeId
+                    : availableFuelTypes.first.id;
+
+                return _InputCard(
+                  label: 'Fuel Type',
+                  icon: Icons.local_fire_department_rounded,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.surfaceDarkElevated
+                          : AppColors.backgroundLight,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark
+                            ? AppColors.outlineDark
+                            : AppColors.outlineLight,
+                      ),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: dropdownValue,
+                        isExpanded: true,
+                        icon: const Icon(Icons.expand_more_rounded),
+                        items: availableFuelTypes.map((fuelType) {
+                          final priceLabel =
+                              '${provider.currency}${CurrencyUtils.formatAmount(fuelType.pricePerLiter, provider.currency)}/L';
+                          return DropdownMenuItem<String>(
+                            value: fuelType.id,
+                            child: Text('${fuelType.name}  •  $priceLabel'),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          if (value == null) {
+                            return;
+                          }
+                          setState(() => _selectedFuelTypeId = value);
+                        },
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
             _InputCard(
               label: 'Odometer',
               icon: Icons.speed_rounded,
@@ -118,9 +201,11 @@ class _EditRecordScreenState extends State<EditRecordScreen> {
                 trailingText: 'km',
                 child: TextFormField(
                   controller: _odometerController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                    FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d+\.?\d{0,2}')),
                   ],
                   decoration: const InputDecoration(
                     hintText: '0',
@@ -152,14 +237,17 @@ class _EditRecordScreenState extends State<EditRecordScreen> {
                     leadingText: provider.currency,
                     child: TextFormField(
                       controller: _costController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [
                         FilteringTextInputFormatter.allow(
-                          RegExp(CurrencyUtils.getInputPattern(provider.currency)),
+                          RegExp(
+                              CurrencyUtils.getInputPattern(provider.currency)),
                         ),
                       ],
                       decoration: InputDecoration(
-                        hintText: CurrencyUtils.getPlaceholder(provider.currency),
+                        hintText:
+                            CurrencyUtils.getPlaceholder(provider.currency),
                         border: InputBorder.none,
                       ),
                       style: theme.textTheme.headlineSmall?.copyWith(
@@ -185,12 +273,16 @@ class _EditRecordScreenState extends State<EditRecordScreen> {
               label: 'Notes',
               icon: Icons.notes_rounded,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.surfaceDarkElevated : AppColors.backgroundLight,
+                  color: isDark
+                      ? AppColors.surfaceDarkElevated
+                      : AppColors.backgroundLight,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isDark ? AppColors.outlineDark : AppColors.outlineLight,
+                    color:
+                        isDark ? AppColors.outlineDark : AppColors.outlineLight,
                   ),
                 ),
                 child: TextFormField(
@@ -290,16 +382,20 @@ class _EditRecordScreenState extends State<EditRecordScreen> {
         odometerKm: double.parse(_odometerController.text),
         cost: double.parse(_costController.text),
         notes: _notesController.text.trim(),
+        fuelTypeId: _selectedFuelTypeId,
       );
 
-      await context.read<RecordsProvider>().updateRecord(updatedRecord);
+      final provider = context.read<RecordsProvider>();
+      await provider.updateRecord(updatedRecord);
+      await provider.setSelectedFuelType(_selectedFuelTypeId);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Record updated!'),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
         Navigator.of(context).pop(true);
@@ -316,7 +412,8 @@ class _EditRecordScreenState extends State<EditRecordScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Record'),
-        content: const Text('Are you sure you want to delete this record? This action cannot be undone.'),
+        content: const Text(
+            'Are you sure you want to delete this record? This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -340,7 +437,8 @@ class _EditRecordScreenState extends State<EditRecordScreen> {
           SnackBar(
             content: const Text('Record deleted'),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
         Navigator.of(context).pop(true);
@@ -467,7 +565,8 @@ class _TextFieldShell extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDarkElevated : AppColors.backgroundLight,
+        color:
+            isDark ? AppColors.surfaceDarkElevated : AppColors.backgroundLight,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark ? AppColors.outlineDark : AppColors.outlineLight,

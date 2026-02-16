@@ -3,10 +3,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import '../models/fill_record.dart';
+import '../models/fuel_type.dart';
 
 class ImportService {
   /// Import records from a CSV file
-  /// Expected columns: Date, Odometer (km), Cost, Notes (optional)
+  /// Expected columns: Date, Odometer (km), Cost, Notes (optional), Fuel Type (optional)
   /// Date formats supported: yyyy-MM-dd, dd/MM/yyyy, MM/dd/yyyy, dd-MM-yyyy
   Future<ImportResult> importFromCsv() async {
     try {
@@ -36,7 +37,8 @@ class ImportService {
 
       // Parse CSV
       final csvString = utf8.decode(file.bytes!);
-      final List<List<dynamic>> rows = const CsvToListConverter().convert(csvString);
+      final List<List<dynamic>> rows =
+          const CsvToListConverter().convert(csvString);
 
       if (rows.isEmpty) {
         return ImportResult(
@@ -49,10 +51,11 @@ class ImportService {
       // Skip header row and parse data
       final records = <FillRecord>[];
       final errors = <String>[];
-      
+
       for (int i = 1; i < rows.length; i++) {
         final row = rows[i];
-        if (row.isEmpty || (row.length == 1 && row[0].toString().trim().isEmpty)) {
+        if (row.isEmpty ||
+            (row.length == 1 && row[0].toString().trim().isEmpty)) {
           continue; // Skip empty rows
         }
 
@@ -76,7 +79,8 @@ class ImportService {
 
       return ImportResult(
         success: true,
-        message: 'Imported ${records.length} records${errors.isNotEmpty ? " (${errors.length} rows skipped)" : ""}',
+        message:
+            'Imported ${records.length} records${errors.isNotEmpty ? " (${errors.length} rows skipped)" : ""}',
         records: records,
       );
     } catch (e) {
@@ -90,7 +94,8 @@ class ImportService {
 
   FillRecord? _parseRow(List<dynamic> row, int rowIndex) {
     if (row.length < 3) {
-      throw Exception('Not enough columns (need at least Date, Odometer, Cost)');
+      throw Exception(
+          'Not enough columns (need at least Date, Odometer, Cost)');
     }
 
     // Parse date
@@ -108,7 +113,8 @@ class ImportService {
     }
 
     // Parse cost
-    final costStr = row[2].toString().replaceAll(',', '').replaceAll('₹', '').trim();
+    final costStr =
+        row[2].toString().replaceAll(',', '').replaceAll('₹', '').trim();
     final cost = double.tryParse(costStr);
     if (cost == null) {
       throw Exception('Invalid cost: ${row[2]}');
@@ -116,6 +122,10 @@ class ImportService {
 
     // Parse notes (optional)
     final notes = row.length > 3 ? row[3].toString().trim() : '';
+    final rawFuelType = row.length > 4 ? row[4].toString().trim() : '';
+    final fuelTypeId = rawFuelType.isEmpty
+        ? FuelType.defaultId
+        : FuelType.normalizeId(rawFuelType);
 
     return FillRecord(
       id: '${date.millisecondsSinceEpoch}_$rowIndex',
@@ -123,6 +133,7 @@ class ImportService {
       odometerKm: odometer,
       cost: cost,
       notes: notes,
+      fuelTypeId: fuelTypeId,
     );
   }
 

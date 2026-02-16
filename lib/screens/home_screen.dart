@@ -647,7 +647,8 @@ class _RefillRadarCard extends StatelessWidget {
               Expanded(
                 child: _ForecastMetric(
                   label: 'Expected Cost',
-                  value: '$currency${CurrencyUtils.formatAmount(expectedCost, currency)}',
+                  value:
+                      '$currency${CurrencyUtils.formatAmount(expectedCost, currency)}',
                 ),
               ),
               const SizedBox(width: 10),

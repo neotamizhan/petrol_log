@@ -22,7 +22,22 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
 
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = TimeOfDay.now();
+  String _selectedFuelTypeId = '';
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<RecordsProvider>();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _selectedFuelTypeId = provider.selectedFuelTypeId;
+      });
+    });
+  }
 
   @override
   void dispose() {
@@ -55,6 +70,13 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
           children: [
             Consumer<RecordsProvider>(
               builder: (context, provider, child) {
+                final selectedFuelTypeId = _selectedFuelTypeId.isNotEmpty
+                    ? _selectedFuelTypeId
+                    : provider.selectedFuelTypeId;
+                final selectedFuelType =
+                    provider.getFuelTypeById(selectedFuelTypeId);
+                final selectedPrice =
+                    provider.getFuelPriceForFuelTypeId(selectedFuelTypeId);
                 return Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -62,13 +84,18 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                         ? const LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
-                            colors: [AppColors.addFormSurfaceDark, Color(0xFF17312E)],
+                            colors: [
+                              AppColors.addFormSurfaceDark,
+                              Color(0xFF17312E)
+                            ],
                           )
                         : null,
                     color: isDark ? null : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: isDark ? AppColors.outlineDark : AppColors.outlineLight,
+                      color: isDark
+                          ? AppColors.outlineDark
+                          : AppColors.outlineLight,
                     ),
                     boxShadow: [
                       BoxShadow(
@@ -81,7 +108,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                   child: Column(
                     children: [
                       Text(
-                        'Calculated Price / L',
+                        'Fuel Price / L',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: colorScheme.onSurface.withOpacity(0.6),
                           fontWeight: FontWeight.w600,
@@ -94,7 +121,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            '${provider.currency}${CurrencyUtils.formatAmount(provider.fuelPricePerLiter, provider.currency)}',
+                            '${provider.currency}${CurrencyUtils.formatAmount(selectedPrice, provider.currency)}',
                             style: theme.textTheme.headlineLarge?.copyWith(
                               fontWeight: FontWeight.w700,
                               color: AppColors.primary,
@@ -110,10 +137,22 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                         ],
                       ),
                       const SizedBox(height: 12),
+                      if (selectedFuelType != null)
+                        Text(
+                          selectedFuelType.name,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: colorScheme.onSurface.withOpacity(0.7),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      if (selectedFuelType != null) const SizedBox(height: 12),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: isDark ? AppColors.surfaceDarkElevated : AppColors.backgroundLight,
+                          color: isDark
+                              ? AppColors.surfaceDarkElevated
+                              : AppColors.backgroundLight,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: isDark
@@ -149,6 +188,85 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
               },
             ),
             const SizedBox(height: 20),
+            Consumer<RecordsProvider>(
+              builder: (context, provider, child) {
+                final availableFuelTypes = provider.activeFuelTypes;
+                if (availableFuelTypes.isEmpty) {
+                  return _InputCard(
+                    label: 'Fuel Type',
+                    icon: Icons.local_fire_department_rounded,
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.surfaceDarkElevated
+                            : AppColors.backgroundLight,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.outlineDark
+                              : AppColors.outlineLight,
+                        ),
+                      ),
+                      child: const Text(
+                          'No active fuel types. Add one in Settings.'),
+                    ),
+                  );
+                }
+
+                final selectedFuelTypeId = _selectedFuelTypeId.isNotEmpty
+                    ? _selectedFuelTypeId
+                    : provider.selectedFuelTypeId;
+                final dropdownValue = availableFuelTypes.any(
+                  (fuelType) => fuelType.id == selectedFuelTypeId,
+                )
+                    ? selectedFuelTypeId
+                    : availableFuelTypes.first.id;
+
+                return _InputCard(
+                  label: 'Fuel Type',
+                  icon: Icons.local_fire_department_rounded,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.surfaceDarkElevated
+                          : AppColors.backgroundLight,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark
+                            ? AppColors.outlineDark
+                            : AppColors.outlineLight,
+                      ),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: dropdownValue,
+                        isExpanded: true,
+                        icon: const Icon(Icons.expand_more_rounded),
+                        items: availableFuelTypes.map((fuelType) {
+                          final priceLabel =
+                              '${provider.currency}${CurrencyUtils.formatAmount(fuelType.pricePerLiter, provider.currency)}/L';
+                          return DropdownMenuItem<String>(
+                            value: fuelType.id,
+                            child: Text('${fuelType.name}  •  $priceLabel'),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          if (value == null) {
+                            return;
+                          }
+                          setState(() {
+                            _selectedFuelTypeId = value;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
             Row(
               children: [
                 Expanded(
@@ -178,9 +296,11 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                 trailingText: 'km',
                 child: TextFormField(
                   controller: _odometerController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                    FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d+\.?\d{0,2}')),
                   ],
                   decoration: const InputDecoration(
                     hintText: '0',
@@ -216,14 +336,17 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                           leadingText: provider.currency,
                           child: TextFormField(
                             controller: _costController,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
                             inputFormatters: [
                               FilteringTextInputFormatter.allow(
-                                RegExp(CurrencyUtils.getInputPattern(provider.currency)),
+                                RegExp(CurrencyUtils.getInputPattern(
+                                    provider.currency)),
                               ),
                             ],
                             decoration: InputDecoration(
-                              hintText: CurrencyUtils.getPlaceholder(provider.currency),
+                              hintText: CurrencyUtils.getPlaceholder(
+                                  provider.currency),
                               border: InputBorder.none,
                             ),
                             style: theme.textTheme.headlineSmall?.copyWith(
@@ -257,16 +380,22 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                           valueListenable: _costController,
                           builder: (context, value, child) {
                             final cost = double.tryParse(value.text) ?? 0;
-                            final volume = provider.fuelPricePerLiter > 0
-                                ? cost / provider.fuelPricePerLiter
-                                : 0.0;
+                            final selectedFuelTypeId =
+                                _selectedFuelTypeId.isNotEmpty
+                                    ? _selectedFuelTypeId
+                                    : provider.selectedFuelTypeId;
+                            final selectedPrice = provider
+                                .getFuelPriceForFuelTypeId(selectedFuelTypeId);
+                            final volume =
+                                selectedPrice > 0 ? cost / selectedPrice : 0.0;
                             return _TextFieldShell(
                               trailingText: 'L',
                               child: Align(
                                 alignment: Alignment.centerRight,
                                 child: Text(
                                   volume > 0 ? volume.toStringAsFixed(1) : '--',
-                                  style: theme.textTheme.headlineSmall?.copyWith(
+                                  style:
+                                      theme.textTheme.headlineSmall?.copyWith(
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.accentAmber,
                                   ),
@@ -286,12 +415,16 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
               label: 'Notes',
               icon: Icons.notes_rounded,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.inputSurfaceDark : AppColors.backgroundLight,
+                  color: isDark
+                      ? AppColors.inputSurfaceDark
+                      : AppColors.backgroundLight,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isDark ? AppColors.outlineDark : AppColors.outlineLight,
+                    color:
+                        isDark ? AppColors.outlineDark : AppColors.outlineLight,
                   ),
                 ),
                 child: TextFormField(
@@ -299,7 +432,8 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                   maxLines: 3,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: const InputDecoration(
-                    hintText: 'Station brand, tire pressure, or trip details...',
+                    hintText:
+                        'Station brand, tire pressure, or trip details...',
                     border: InputBorder.none,
                   ),
                 ),
@@ -316,7 +450,8 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                (isDark ? AppColors.backgroundDark : AppColors.backgroundLight).withOpacity(0),
+                (isDark ? AppColors.backgroundDark : AppColors.backgroundLight)
+                    .withOpacity(0),
                 isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
               ],
             ),
@@ -393,9 +528,14 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
         odometerKm: double.parse(_odometerController.text),
         cost: double.parse(_costController.text),
         notes: _notesController.text.trim(),
+        fuelTypeId: _selectedFuelTypeId.isNotEmpty
+            ? _selectedFuelTypeId
+            : context.read<RecordsProvider>().selectedFuelTypeId,
       );
 
-      await context.read<RecordsProvider>().addRecord(record);
+      final provider = context.read<RecordsProvider>();
+      await provider.addRecord(record);
+      await provider.setSelectedFuelType(record.fuelTypeId);
 
       if (mounted) {
         Navigator.of(context).pop();

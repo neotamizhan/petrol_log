@@ -4,13 +4,21 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/records_provider.dart';
 import '../models/fill_record.dart';
+import '../models/fuel_type.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_panel.dart';
 import '../utils/currency_utils.dart';
 import 'settings_screen.dart';
 
-class StatsScreen extends StatelessWidget {
+class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
+
+  @override
+  State<StatsScreen> createState() => _StatsScreenState();
+}
+
+class _StatsScreenState extends State<StatsScreen> {
+  String _selectedFuelTypeFilter = 'all';
 
   @override
   Widget build(BuildContext context) {
@@ -23,8 +31,31 @@ class StatsScreen extends StatelessWidget {
       body: SafeArea(
         child: Consumer<RecordsProvider>(
           builder: (context, provider, child) {
-            final stats = provider.getOverallStats();
+            final filterIsValid = _selectedFuelTypeFilter == 'all' ||
+                provider.fuelTypes
+                    .any((fuelType) => fuelType.id == _selectedFuelTypeFilter);
+            final selectedFilterId =
+                filterIsValid ? _selectedFuelTypeFilter : 'all';
+            if (!filterIsValid) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) {
+                  return;
+                }
+                setState(() => _selectedFuelTypeFilter = 'all');
+              });
+            }
+
+            final fuelTypeId =
+                selectedFilterId == 'all' ? null : selectedFilterId;
+            final stats = provider.getOverallStats(fuelTypeId: fuelTypeId);
             final totalRecords = stats['totalRecords'] as int;
+            final filterFuelTypes = provider.fuelTypes
+                .where(
+                  (fuelType) =>
+                      fuelType.active ||
+                      provider.hasRecordsForFuelType(fuelType.id),
+                )
+                .toList();
 
             if (totalRecords == 0) {
               return CustomScrollView(
@@ -54,7 +85,8 @@ class StatsScreen extends StatelessWidget {
                                 children: [
                                   Text(
                                     'Petrol Log',
-                                    style: theme.textTheme.titleMedium?.copyWith(
+                                    style:
+                                        theme.textTheme.titleMedium?.copyWith(
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
@@ -77,6 +109,18 @@ class StatsScreen extends StatelessWidget {
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                      child: _FuelTypeFilterBar(
+                        selectedId: selectedFilterId,
+                        fuelTypes: filterFuelTypes,
+                        onSelected: (value) {
+                          setState(() => _selectedFuelTypeFilter = value);
+                        },
                       ),
                     ),
                   ),
@@ -142,6 +186,18 @@ class StatsScreen extends StatelessWidget {
                 ),
                 SliverToBoxAdapter(
                   child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                    child: _FuelTypeFilterBar(
+                      selectedId: selectedFilterId,
+                      fuelTypes: filterFuelTypes,
+                      onSelected: (value) {
+                        setState(() => _selectedFuelTypeFilter = value);
+                      },
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                     child: _OverviewGrid(stats: stats),
                   ),
@@ -155,14 +211,16 @@ class StatsScreen extends StatelessWidget {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                    child: _MonthlySpendPanel(stats: stats, currency: provider.currency),
+                    child: _MonthlySpendPanel(
+                        stats: stats, currency: provider.currency),
                   ),
                 ),
                 if (!isDark)
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                      child: _InsightStrip(stats: stats, currency: provider.currency),
+                      child: _InsightStrip(
+                          stats: stats, currency: provider.currency),
                     ),
                   ),
               ],
@@ -228,6 +286,66 @@ class _OverviewGrid extends StatelessWidget {
           icon: Icons.schedule_rounded,
         ),
       ],
+    );
+  }
+}
+
+class _FuelTypeFilterBar extends StatelessWidget {
+  final String selectedId;
+  final List<FuelType> fuelTypes;
+  final ValueChanged<String> onSelected;
+
+  const _FuelTypeFilterBar({
+    required this.selectedId,
+    required this.fuelTypes,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final options = <Map<String, String>>[
+      const {'id': 'all', 'label': 'All'},
+      ...fuelTypes.map((fuelType) => {
+            'id': fuelType.id,
+            'label': fuelType.name,
+          }),
+    ];
+
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: options.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final option = options[index];
+          final optionId = option['id']!;
+          final selected = selectedId == optionId;
+          return ChoiceChip(
+            label: Text(option['label']!),
+            selected: selected,
+            onSelected: (_) => onSelected(optionId),
+            labelStyle: theme.textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: selected
+                  ? Colors.white
+                  : theme.colorScheme.onSurface.withOpacity(0.75),
+            ),
+            selectedColor: AppColors.primary,
+            backgroundColor: theme.brightness == Brightness.dark
+                ? AppColors.surfaceDarkElevated
+                : Colors.white,
+            side: BorderSide(
+              color: selected
+                  ? AppColors.primary
+                  : theme.brightness == Brightness.dark
+                      ? AppColors.outlineDark.withOpacity(0.6)
+                      : AppColors.outlineLight,
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -316,7 +434,8 @@ class _EfficiencyPanel extends StatelessWidget {
     final worstRecord = stats['worstMileageRecord'] as FillRecord?;
     final dateFormat = DateFormat('dd MMM');
 
-    final maxMileage = averageMileage > 0 ? math.max(averageMileage * 1.4, 15) : 15.0;
+    final maxMileage =
+        averageMileage > 0 ? math.max(averageMileage * 1.4, 15) : 15.0;
     final value = (averageMileage / maxMileage).clamp(0.0, 1.0);
 
     return GlassPanel(
@@ -343,7 +462,8 @@ class _EfficiencyPanel extends StatelessWidget {
                   size: const Size(240, 120),
                   painter: _GaugePainter(
                     value: value,
-                    backgroundColor: theme.colorScheme.onSurface.withOpacity(0.08),
+                    backgroundColor:
+                        theme.colorScheme.onSurface.withOpacity(0.08),
                     foregroundColor: AppColors.primary,
                   ),
                 ),
@@ -351,7 +471,9 @@ class _EfficiencyPanel extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      averageMileage > 0 ? averageMileage.toStringAsFixed(1) : '--',
+                      averageMileage > 0
+                          ? averageMileage.toStringAsFixed(1)
+                          : '--',
                       style: theme.textTheme.displaySmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -374,8 +496,11 @@ class _EfficiencyPanel extends StatelessWidget {
               Expanded(
                 child: _MiniCard(
                   label: 'Best Trip',
-                  value: bestMileage > 0 ? bestMileage.toStringAsFixed(1) : '--',
-                  hint: bestRecord != null ? dateFormat.format(bestRecord.date) : 'Highway',
+                  value:
+                      bestMileage > 0 ? bestMileage.toStringAsFixed(1) : '--',
+                  hint: bestRecord != null
+                      ? dateFormat.format(bestRecord.date)
+                      : 'Highway',
                   valueColor: const Color(0xFF22C55E),
                 ),
               ),
@@ -383,8 +508,11 @@ class _EfficiencyPanel extends StatelessWidget {
               Expanded(
                 child: _MiniCard(
                   label: 'Worst Trip',
-                  value: worstMileage > 0 ? worstMileage.toStringAsFixed(1) : '--',
-                  hint: worstRecord != null ? dateFormat.format(worstRecord.date) : 'City',
+                  value:
+                      worstMileage > 0 ? worstMileage.toStringAsFixed(1) : '--',
+                  hint: worstRecord != null
+                      ? dateFormat.format(worstRecord.date)
+                      : 'City',
                   valueColor: AppColors.accentAmber,
                 ),
               ),
@@ -495,7 +623,8 @@ class _MonthlySpendPanel extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(16),
@@ -526,15 +655,21 @@ class _MonthlySpendPanel extends StatelessWidget {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 const labelGap = 8.0;
-                final labelFontSize = theme.textTheme.labelSmall?.fontSize ?? 11;
-                final scaledLabelHeight = MediaQuery.textScalerOf(context).scale(labelFontSize) + labelGap;
-                final maxBarHeight = math.max(30.0, constraints.maxHeight - scaledLabelHeight);
+                final labelFontSize =
+                    theme.textTheme.labelSmall?.fontSize ?? 11;
+                final scaledLabelHeight =
+                    MediaQuery.textScalerOf(context).scale(labelFontSize) +
+                        labelGap;
+                final maxBarHeight =
+                    math.max(30.0, constraints.maxHeight - scaledLabelHeight);
 
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: recentMonths.map((monthKey) {
                     final spending = monthlySpending[monthKey] ?? 0;
-                    final barHeight = maxSpending > 0 ? (spending / maxSpending) * maxBarHeight : 0.0;
+                    final barHeight = maxSpending > 0
+                        ? (spending / maxSpending) * maxBarHeight
+                        : 0.0;
                     final isPeak = spending == maxSpending;
                     return Expanded(
                       child: Padding(
@@ -545,12 +680,16 @@ class _MonthlySpendPanel extends StatelessWidget {
                             Container(
                               height: barHeight,
                               decoration: BoxDecoration(
-                                color: isPeak ? AppColors.primary : AppColors.primary.withOpacity(0.4),
-                                borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                                color: isPeak
+                                    ? AppColors.primary
+                                    : AppColors.primary.withOpacity(0.4),
+                                borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(10)),
                                 boxShadow: isPeak
                                     ? [
                                         BoxShadow(
-                                          color: AppColors.primary.withOpacity(0.3),
+                                          color: AppColors.primary
+                                              .withOpacity(0.3),
                                           blurRadius: 16,
                                         ),
                                       ]
@@ -563,8 +702,10 @@ class _MonthlySpendPanel extends StatelessWidget {
                               style: theme.textTheme.labelSmall?.copyWith(
                                 color: isPeak
                                     ? theme.colorScheme.onSurface
-                                    : theme.colorScheme.onSurface.withOpacity(0.6),
-                                fontWeight: isPeak ? FontWeight.w700 : FontWeight.w500,
+                                    : theme.colorScheme.onSurface
+                                        .withOpacity(0.6),
+                                fontWeight:
+                                    isPeak ? FontWeight.w700 : FontWeight.w500,
                               ),
                             ),
                           ],
@@ -592,7 +733,20 @@ class _MonthlySpendPanel extends StatelessWidget {
     final parts = monthKey.split('-');
     if (parts.length < 2) return monthKey;
     final month = int.tryParse(parts[1]) ?? 1;
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     return months[month - 1];
   }
 }
@@ -623,7 +777,8 @@ class _InsightStrip extends StatelessWidget {
               color: AppColors.primary.withOpacity(0.15),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(Icons.trending_up_rounded, color: AppColors.primary),
+            child:
+                const Icon(Icons.trending_up_rounded, color: AppColors.primary),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -659,7 +814,9 @@ class _CircleAction extends StatelessWidget {
           color: isDark ? AppColors.surfaceDarkElevated : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isDark ? AppColors.outlineDark.withOpacity(0.6) : AppColors.outlineLight,
+            color: isDark
+                ? AppColors.outlineDark.withOpacity(0.6)
+                : AppColors.outlineLight,
           ),
         ),
         child: Icon(icon, color: Theme.of(context).colorScheme.onSurface),
@@ -702,7 +859,8 @@ class _GaugePainter extends CustomPainter {
     const sweepAngle = math.pi;
 
     canvas.drawArc(rect, startAngle, sweepAngle, false, backgroundPaint);
-    canvas.drawArc(rect, startAngle, sweepAngle * value, false, foregroundPaint);
+    canvas.drawArc(
+        rect, startAngle, sweepAngle * value, false, foregroundPaint);
   }
 
   @override
@@ -742,16 +900,16 @@ class _EmptyState extends StatelessWidget {
             Text(
               'No Data Yet',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
               'Add some fill records to see your statistics',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurface.withOpacity(0.6),
-              ),
+                    color: colorScheme.onSurface.withOpacity(0.6),
+                  ),
             ),
           ],
         ),

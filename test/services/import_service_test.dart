@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
+import 'package:petrol_log/models/fuel_type.dart';
 
 /// Tests for date parsing logic used by ImportService
 /// Note: Since _parseDate is private, we test it indirectly by recreating the logic
@@ -105,6 +106,16 @@ void main() {
       final row = ['2024-01-15', '1000', '500'];
       final notes = row.length > 3 ? row[3].toString() : '';
       expect(notes, '');
+    });
+
+    test('normalizes optional fuel type column', () {
+      final row = ['2024-01-15', '1000', '500', 'Full tank', 'Premium 95'];
+      final rawFuelType = row.length > 4 ? row[4].toString().trim() : '';
+      final fuelTypeId = rawFuelType.isEmpty
+          ? FuelType.defaultId
+          : FuelType.normalizeId(rawFuelType);
+
+      expect(fuelTypeId, 'premium_95');
     });
   });
 }

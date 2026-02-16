@@ -41,7 +41,8 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final topColor = isDark ? const Color(0xFF0D2D2A) : const Color(0xFFE6F5F3);
-    final bottomColor = isDark ? AppColors.backgroundDark : AppColors.backgroundLight;
+    final bottomColor =
+        isDark ? AppColors.backgroundDark : AppColors.backgroundLight;
 
     return Scaffold(
       body: Container(
@@ -94,7 +95,10 @@ class _SplashScreenState extends State<SplashScreen> {
                 Text(
                   'Track fuel, mileage, and spend',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.64),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withOpacity(0.64),
                       ),
                 ),
                 const SizedBox(height: 24),

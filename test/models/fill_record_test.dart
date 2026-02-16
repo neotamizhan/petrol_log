@@ -166,6 +166,7 @@ void main() {
         expect(json['odometerKm'], 1000.5);
         expect(json['cost'], 500.25);
         expect(json['notes'], 'Test note');
+        expect(json['fuelTypeId'], 'regular');
       });
 
       test('fromJson creates correct record', () {
@@ -175,6 +176,7 @@ void main() {
           'odometerKm': 1000.5,
           'cost': 500.25,
           'notes': 'Test note',
+          'fuelTypeId': 'premium_95',
         };
 
         final record = FillRecord.fromJson(json);
@@ -184,6 +186,7 @@ void main() {
         expect(record.odometerKm, 1000.5);
         expect(record.cost, 500.25);
         expect(record.notes, 'Test note');
+        expect(record.fuelTypeId, 'premium_95');
       });
 
       test('fromJson handles missing notes', () {
@@ -197,6 +200,7 @@ void main() {
         final record = FillRecord.fromJson(json);
 
         expect(record.notes, '');
+        expect(record.fuelTypeId, 'regular');
       });
 
       test('roundtrip serialization preserves data', () {
@@ -206,6 +210,7 @@ void main() {
           odometerKm: 1000.5,
           cost: 500.25,
           notes: 'Test note',
+          fuelTypeId: 'premium_95',
         );
 
         final json = original.toJson();
@@ -216,6 +221,7 @@ void main() {
         expect(restored.odometerKm, original.odometerKm);
         expect(restored.cost, original.cost);
         expect(restored.notes, original.notes);
+        expect(restored.fuelTypeId, original.fuelTypeId);
       });
     });
 
@@ -234,6 +240,7 @@ void main() {
             odometerKm: 1000,
             cost: 500,
             notes: 'Full tank',
+            fuelTypeId: 'premium_95',
           ),
         ];
 
@@ -244,6 +251,7 @@ void main() {
         expect(decoded[0].id, '1');
         expect(decoded[1].id, '2');
         expect(decoded[1].notes, 'Full tank');
+        expect(decoded[1].fuelTypeId, 'premium_95');
       });
 
       test('decodeRecords handles empty string', () {

@@ -1,7 +1,7 @@
 /// Utility class for currency-specific configurations
 class CurrencyUtils {
   /// Get the number of decimal places for a given currency symbol
-  /// 
+  ///
   /// Most currencies use 2 decimal places, but some currencies like:
   /// - KWD (Kuwaiti Dinar) uses 3 decimal places (fils)
   /// - BHD (Bahraini Dinar) uses 3 decimal places

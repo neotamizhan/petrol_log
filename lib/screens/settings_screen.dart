@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../models/fuel_type.dart';
 import '../providers/records_provider.dart';
 import '../services/import_service.dart';
 import '../theme/app_theme.dart';
@@ -35,6 +36,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _hasChanges = false;
   bool _isImporting = false;
   String _selectedCurrency = 'KWD';
+  String _selectedFuelTypeId = '';
   ThemeMode _selectedThemeMode = ThemeMode.system;
 
   @override
@@ -42,12 +44,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<RecordsProvider>();
+      final selectedFuelTypeId = provider.selectedFuelTypeId;
       _priceController.text = CurrencyUtils.formatAmount(
-        provider.fuelPricePerLiter,
+        provider.getFuelPriceForFuelTypeId(selectedFuelTypeId),
         provider.currency,
       );
       setState(() {
         _selectedCurrency = provider.currency;
+        _selectedFuelTypeId = selectedFuelTypeId;
         _selectedThemeMode = provider.themeMode;
       });
     });
@@ -97,97 +101,238 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             _SectionHeader(
               icon: Icons.local_gas_station_rounded,
-              title: 'Current Pump Price',
+              title: 'Fuel Types & Pricing',
             ),
-            GlassPanel(
-              color: isDark ? AppColors.settingsCardDark.withOpacity(0.92) : null,
-              border: Border.all(
-                color: isDark ? AppColors.primary.withOpacity(0.25) : AppColors.outlineLight,
-              ),
-              boxShadow: isDark
-                  ? [
-                      BoxShadow(
-                        color: AppColors.primary.withOpacity(0.2),
-                        blurRadius: 16,
-                        offset: const Offset(0, 8),
-                      ),
-                    ]
-                  : null,
-              padding: const EdgeInsets.all(20),
-              borderRadius: BorderRadius.circular(20),
-              child: Column(
-                children: [
-                  Text(
-                    'PRICE PER LITER',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurface.withOpacity(0.5),
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.4,
-                    ),
+            Consumer<RecordsProvider>(
+              builder: (context, provider, child) {
+                final fuelTypes = provider.fuelTypes;
+                final selectableFuelTypes = fuelTypes
+                    .where((fuelType) =>
+                        fuelType.active ||
+                        fuelType.id == provider.selectedFuelTypeId ||
+                        fuelType.id == _selectedFuelTypeId)
+                    .toList();
+                if (selectableFuelTypes.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                final preferredId = _selectedFuelTypeId.isNotEmpty
+                    ? _selectedFuelTypeId
+                    : provider.selectedFuelTypeId;
+                final selectedId = selectableFuelTypes.any(
+                  (fuelType) => fuelType.id == preferredId,
+                )
+                    ? preferredId
+                    : selectableFuelTypes.first.id;
+                final selectedFuelType = provider.getFuelTypeById(selectedId);
+
+                return GlassPanel(
+                  color: isDark
+                      ? AppColors.settingsCardDark.withOpacity(0.92)
+                      : null,
+                  border: Border.all(
+                    color: isDark
+                        ? AppColors.primary.withOpacity(0.25)
+                        : AppColors.outlineLight,
                   ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _priceController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(CurrencyUtils.getInputPattern(_selectedCurrency)),
-                      ),
-                    ],
-                    style: theme.textTheme.displaySmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
-                    ),
-                    decoration: InputDecoration(
-                      prefixText: '$_selectedCurrency ',
-                      prefixStyle: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
-                      ),
-                      suffixText: '/L',
-                      filled: true,
-                      fillColor: isDark ? AppColors.surfaceDarkElevated : AppColors.backgroundLight,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(18),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    onChanged: (_) => setState(() => _hasChanges = true),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter fuel price';
-                      }
-                      final price = double.tryParse(value);
-                      if (price == null || price <= 0) {
-                        return 'Please enter a valid price';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  boxShadow: isDark
+                      ? [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.2),
+                            blurRadius: 16,
+                            offset: const Offset(0, 8),
+                          ),
+                        ]
+                      : null,
+                  padding: const EdgeInsets.all(20),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        height: 8,
-                        width: 8,
-                        decoration: const BoxDecoration(
-                          color: Colors.redAccent,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
                       Text(
-                        'Live update active',
+                        'FUEL TYPE',
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: colorScheme.onSurface.withOpacity(0.5),
-                          letterSpacing: 1.1,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.4,
                         ),
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? AppColors.surfaceDarkElevated
+                              : AppColors.backgroundLight,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isDark
+                                ? AppColors.outlineDark
+                                : AppColors.outlineLight,
+                          ),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: selectedId,
+                            isExpanded: true,
+                            icon: const Icon(Icons.expand_more_rounded),
+                            items: selectableFuelTypes.map((fuelType) {
+                              final archivedSuffix =
+                                  fuelType.active ? '' : ' (Archived)';
+                              return DropdownMenuItem<String>(
+                                value: fuelType.id,
+                                child: Text('${fuelType.name}$archivedSuffix'),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              if (value == null) {
+                                return;
+                              }
+                              setState(() {
+                                _selectedFuelTypeId = value;
+                                _priceController.text =
+                                    CurrencyUtils.formatAmount(
+                                  provider.getFuelPriceForFuelTypeId(value),
+                                  _selectedCurrency,
+                                );
+                                _hasChanges = true;
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'PRICE PER LITER',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onSurface.withOpacity(0.5),
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _priceController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(CurrencyUtils.getInputPattern(
+                                _selectedCurrency)),
+                          ),
+                        ],
+                        style: theme.textTheme.displaySmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                        decoration: InputDecoration(
+                          prefixText: '$_selectedCurrency ',
+                          prefixStyle: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                          suffixText: '/L',
+                          filled: true,
+                          fillColor: isDark
+                              ? AppColors.surfaceDarkElevated
+                              : AppColors.backgroundLight,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        onChanged: (_) => setState(() => _hasChanges = true),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter fuel price';
+                          }
+                          final price =
+                              double.tryParse(value.replaceAll(',', '').trim());
+                          if (price == null || price <= 0) {
+                            return 'Please enter a valid price';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _showAddFuelTypeDialog(provider),
+                              icon: const Icon(Icons.add_rounded, size: 18),
+                              label: const Text('Add Type'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: selectedFuelType == null
+                                  ? null
+                                  : () => _showEditFuelTypeDialog(
+                                      provider, selectedFuelType),
+                              icon: const Icon(Icons.edit_rounded, size: 18),
+                              label: const Text('Edit Type'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: selectedFuelType == null ||
+                                      fuelTypes.length <= 1
+                                  ? null
+                                  : () => _confirmDeleteFuelType(
+                                      provider, selectedFuelType),
+                              icon: const Icon(Icons.delete_outline_rounded,
+                                  size: 18),
+                              label: const Text('Delete'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: fuelTypes.map((fuelType) {
+                          final isSelected = fuelType.id == selectedId;
+                          final badgeText =
+                              '${fuelType.name} • ${_selectedCurrency}${CurrencyUtils.formatAmount(fuelType.pricePerLiter, _selectedCurrency)}';
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? AppColors.primary.withOpacity(0.14)
+                                  : (isDark
+                                      ? AppColors.surfaceDarkElevated
+                                      : AppColors.backgroundLight),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppColors.primary.withOpacity(0.5)
+                                    : (isDark
+                                        ? AppColors.outlineDark
+                                        : AppColors.outlineLight),
+                              ),
+                            ),
+                            child: Text(
+                              fuelType.active
+                                  ? badgeText
+                                  : '$badgeText (Archived)',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: fuelType.active
+                                    ? colorScheme.onSurface
+                                    : colorScheme.onSurface.withOpacity(0.55),
+                              ),
+                            ),
+                          );
+                        }).toList(),
                       ),
                     ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
             const SizedBox(height: 24),
             _SectionHeader(
@@ -202,11 +347,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     icon: Icons.payments_rounded,
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        value: _currencies.any((c) => c['symbol'] == _selectedCurrency)
+                        value: _currencies
+                                .any((c) => c['symbol'] == _selectedCurrency)
                             ? _selectedCurrency
                             : _currencies.first['symbol'],
                         isExpanded: true,
-                        icon: Icon(Icons.expand_more_rounded, color: colorScheme.onSurface.withOpacity(0.6)),
+                        icon: Icon(Icons.expand_more_rounded,
+                            color: colorScheme.onSurface.withOpacity(0.6)),
                         items: _currencies.map((currency) {
                           return DropdownMenuItem<String>(
                             value: currency['symbol'],
@@ -222,9 +369,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               _selectedCurrency = value;
                               _hasChanges = true;
                               // Update price controller text to match new currency's decimal places
-                              final currentPrice = double.tryParse(_priceController.text);
+                              final currentPrice =
+                                  double.tryParse(_priceController.text);
                               if (currentPrice != null) {
-                                _priceController.text = CurrencyUtils.formatAmount(
+                                _priceController.text =
+                                    CurrencyUtils.formatAmount(
                                   currentPrice,
                                   value,
                                 );
@@ -243,7 +392,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     icon: Icons.straighten_rounded,
                     child: Text(
                       'Liters',
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                   ),
                 ),
@@ -303,7 +453,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: 'Data Management',
             ),
             GlassPanel(
-              color: isDark ? AppColors.settingsCardDark.withOpacity(0.45) : null,
+              color:
+                  isDark ? AppColors.settingsCardDark.withOpacity(0.45) : null,
               padding: const EdgeInsets.all(18),
               borderRadius: BorderRadius.circular(20),
               child: Column(
@@ -318,7 +469,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           color: AppColors.primary.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Icons.upload_file_rounded, color: AppColors.primary),
+                        child: const Icon(Icons.upload_file_rounded,
+                            color: AppColors.primary),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -327,7 +479,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           children: [
                             Text(
                               'Import History',
-                              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                              style: theme.textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w700),
                             ),
                             Text(
                               'Migrate data from CSV exports.',
@@ -344,7 +497,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.surfaceDarkElevated : AppColors.backgroundLight,
+                      color: isDark
+                          ? AppColors.surfaceDarkElevated
+                          : AppColors.backgroundLight,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
@@ -358,14 +513,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Date, Odometer (km), Cost, Notes',
+                          'Date, Odometer (km), Cost, Notes, Fuel Type',
                           style: theme.textTheme.bodySmall?.copyWith(
                             fontFamily: 'monospace',
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Example: 2026-01-30, 45230, 2500, Full tank',
+                          'Example: 2026-01-30, 45230, 2500, Full tank, Premium 95',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: colorScheme.onSurface.withOpacity(0.6),
                           ),
@@ -389,7 +544,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ),
                                 )
                               : const Icon(Icons.upload_file_rounded),
-                          label: Text(_isImporting ? 'Importing...' : 'Upload CSV'),
+                          label: Text(
+                              _isImporting ? 'Importing...' : 'Upload CSV'),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -413,7 +569,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: 'How We Calculate',
             ),
             GlassPanel(
-              color: isDark ? AppColors.settingsCardDark.withOpacity(0.45) : null,
+              color:
+                  isDark ? AppColors.settingsCardDark.withOpacity(0.45) : null,
               padding: const EdgeInsets.all(18),
               borderRadius: BorderRadius.circular(20),
               child: Row(
@@ -425,7 +582,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: AppColors.accentBlue,
                   ),
                   const SizedBox(width: 8),
-                  Icon(Icons.arrow_forward_rounded, size: 18, color: colorScheme.onSurface.withOpacity(0.4)),
+                  Icon(Icons.arrow_forward_rounded,
+                      size: 18, color: colorScheme.onSurface.withOpacity(0.4)),
                   const SizedBox(width: 8),
                   _CalcStep(
                     title: 'Step 2',
@@ -434,7 +592,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: AppColors.accentAmber,
                   ),
                   const SizedBox(width: 8),
-                  Icon(Icons.arrow_forward_rounded, size: 18, color: colorScheme.onSurface.withOpacity(0.4)),
+                  Icon(Icons.arrow_forward_rounded,
+                      size: 18, color: colorScheme.onSurface.withOpacity(0.4)),
                   const SizedBox(width: 8),
                   _CalcStep(
                     title: 'Result',
@@ -464,7 +623,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final provider = context.read<RecordsProvider>();
-    final price = double.parse(_priceController.text);
+    final selectedFuelTypeId = _selectedFuelTypeId.isNotEmpty
+        ? _selectedFuelTypeId
+        : provider.selectedFuelTypeId;
+    final price = _parseAmount(_priceController.text);
+    await provider.setSelectedFuelType(selectedFuelTypeId);
     await provider.setFuelPrice(price);
     await provider.setCurrency(_selectedCurrency);
     await provider.setThemeMode(_selectedThemeMode);
@@ -484,6 +647,326 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _showAddFuelTypeDialog(RecordsProvider provider) async {
+    String fuelTypeName = '';
+    String fuelTypePriceText = CurrencyUtils.formatAmount(
+      provider.fuelPricePerLiter,
+      _selectedCurrency,
+    );
+    final formKey = GlobalKey<FormState>();
+
+    final draft = await showDialog<_FuelTypeDraft>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add Fuel Type'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                initialValue: fuelTypeName,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Fuel type name',
+                  hintText: 'Premium 95',
+                ),
+                onChanged: (value) => fuelTypeName = value,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Enter a fuel type name';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                initialValue: fuelTypePriceText,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(
+                    RegExp(CurrencyUtils.getInputPattern(_selectedCurrency)),
+                  ),
+                ],
+                onChanged: (value) => fuelTypePriceText = value,
+                decoration: InputDecoration(
+                  labelText: 'Price per liter',
+                  prefixText: '$_selectedCurrency ',
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Enter price';
+                  }
+                  final price =
+                      double.tryParse(value.replaceAll(',', '').trim());
+                  if (price == null || price <= 0) {
+                    return 'Enter a valid price';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (!formKey.currentState!.validate()) {
+                return;
+              }
+              Navigator.of(ctx).pop(
+                _FuelTypeDraft(
+                  name: fuelTypeName.trim(),
+                  pricePerLiter: _parseAmount(fuelTypePriceText),
+                ),
+              );
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+
+    if (draft == null) {
+      return;
+    }
+
+    await Future<void>.delayed(Duration.zero);
+
+    final beforeIds = provider.fuelTypes.map((fuelType) => fuelType.id).toSet();
+    await provider.addFuelType(
+      name: draft.name,
+      pricePerLiter: draft.pricePerLiter,
+    );
+
+    final createdFuelType = provider.fuelTypes.firstWhere(
+      (fuelType) => !beforeIds.contains(fuelType.id),
+      orElse: () => provider.selectedFuelType ?? provider.fuelTypes.first,
+    );
+    await provider.setSelectedFuelType(createdFuelType.id);
+
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _selectedFuelTypeId = createdFuelType.id;
+      _priceController.text = CurrencyUtils.formatAmount(
+        createdFuelType.pricePerLiter,
+        _selectedCurrency,
+      );
+      _hasChanges = false;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Fuel type added'),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showEditFuelTypeDialog(
+    RecordsProvider provider,
+    FuelType fuelType,
+  ) async {
+    String fuelTypeName = fuelType.name;
+    String fuelTypePriceText = CurrencyUtils.formatAmount(
+      fuelType.pricePerLiter,
+      _selectedCurrency,
+    );
+    final formKey = GlobalKey<FormState>();
+
+    final draft = await showDialog<_FuelTypeDraft>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Fuel Type'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                initialValue: fuelTypeName,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(labelText: 'Fuel type name'),
+                onChanged: (value) => fuelTypeName = value,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Enter a fuel type name';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                initialValue: fuelTypePriceText,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(
+                    RegExp(CurrencyUtils.getInputPattern(_selectedCurrency)),
+                  ),
+                ],
+                onChanged: (value) => fuelTypePriceText = value,
+                decoration: InputDecoration(
+                  labelText: 'Price per liter',
+                  prefixText: '$_selectedCurrency ',
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Enter price';
+                  }
+                  final price =
+                      double.tryParse(value.replaceAll(',', '').trim());
+                  if (price == null || price <= 0) {
+                    return 'Enter a valid price';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (!formKey.currentState!.validate()) {
+                return;
+              }
+              Navigator.of(ctx).pop(
+                _FuelTypeDraft(
+                  name: fuelTypeName.trim(),
+                  pricePerLiter: _parseAmount(fuelTypePriceText),
+                ),
+              );
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (draft == null) {
+      return;
+    }
+
+    await Future<void>.delayed(Duration.zero);
+
+    final updatedFuelType = fuelType.copyWith(
+      name: draft.name,
+      pricePerLiter: draft.pricePerLiter,
+    );
+    await provider.updateFuelType(updatedFuelType);
+
+    if (!mounted) {
+      return;
+    }
+    if (_selectedFuelTypeId == updatedFuelType.id) {
+      setState(() {
+        _priceController.text = CurrencyUtils.formatAmount(
+          updatedFuelType.pricePerLiter,
+          _selectedCurrency,
+        );
+        _hasChanges = false;
+      });
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Fuel type updated'),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteFuelType(
+    RecordsProvider provider,
+    FuelType fuelType,
+  ) async {
+    if (provider.fuelTypes.length <= 1) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('At least one fuel type is required'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+      return;
+    }
+
+    final hasRecords = provider.hasRecordsForFuelType(fuelType.id);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Fuel Type'),
+        content: Text(
+          hasRecords
+              ? 'This fuel type is used in existing records. It will be archived instead of removed. Continue?'
+              : 'Remove "${fuelType.name}" permanently?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(hasRecords ? 'Archive' : 'Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    await provider.deleteFuelType(fuelType.id);
+    final nextSelected = provider.selectedFuelTypeId;
+
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _selectedFuelTypeId = nextSelected;
+      _priceController.text = CurrencyUtils.formatAmount(
+        provider.getFuelPriceForFuelTypeId(nextSelected),
+        _selectedCurrency,
+      );
+      _hasChanges = false;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(hasRecords ? 'Fuel type archived' : 'Fuel type deleted'),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
   Future<void> _importFromCsv() async {
     setState(() => _isImporting = true);
 
@@ -497,7 +980,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           context: context,
           builder: (ctx) => AlertDialog(
             title: const Text('Import Records'),
-            content: Text('Found ${result.records.length} records to import. Continue?'),
+            content: Text(
+                'Found ${result.records.length} records to import. Continue?'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
@@ -533,7 +1017,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SnackBar(
             content: Text(result.message),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: result.success ? null : Theme.of(context).colorScheme.error,
+            backgroundColor:
+                result.success ? null : Theme.of(context).colorScheme.error,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),
@@ -546,6 +1031,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     }
   }
+
+  double _parseAmount(String text) {
+    return double.parse(text.replaceAll(',', '').trim());
+  }
+}
+
+class _FuelTypeDraft {
+  final String name;
+  final double pricePerLiter;
+
+  const _FuelTypeDraft({
+    required this.name,
+    required this.pricePerLiter,
+  });
 }
 
 class _SectionHeader extends StatelessWidget {
@@ -601,7 +1100,9 @@ class _PreferenceCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 18, color: theme.colorScheme.onSurface.withOpacity(0.6)),
+              Icon(icon,
+                  size: 18,
+                  color: theme.colorScheme.onSurface.withOpacity(0.6)),
               const SizedBox(width: 8),
               Text(
                 title,

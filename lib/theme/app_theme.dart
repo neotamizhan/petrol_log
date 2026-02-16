@@ -78,7 +78,8 @@ class AppTheme {
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
         ),
@@ -87,7 +88,8 @@ class AppTheme {
         style: FilledButton.styleFrom(
           backgroundColor: scheme.primary,
           foregroundColor: Colors.white,
-          textStyle: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          textStyle:
+              textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -126,8 +128,9 @@ class AppTheme {
       surfaceTint: AppColors.primary,
     );
 
-    final textTheme = GoogleFonts.spaceGroteskTextTheme(ThemeData.dark().textTheme)
-        .apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
+    final textTheme =
+        GoogleFonts.spaceGroteskTextTheme(ThemeData.dark().textTheme)
+            .apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
 
     return ThemeData(
       useMaterial3: true,
@@ -154,7 +157,8 @@ class AppTheme {
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
         ),
@@ -163,7 +167,8 @@ class AppTheme {
         style: FilledButton.styleFrom(
           backgroundColor: scheme.primary,
           foregroundColor: Colors.white,
-          textStyle: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          textStyle:
+              textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),

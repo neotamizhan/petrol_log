@@ -1,26 +1,88 @@
+import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../models/fill_record.dart';
+import '../models/fuel_type.dart';
 
 class StorageService {
   static const String _recordsKey = 'fill_records';
   static const String _fuelPriceKey = 'fuel_price_per_liter';
   static const String _currencyKey = 'currency_symbol';
   static const String _themeModeKey = 'theme_mode';
-  static const double defaultFuelPrice = 100.0; // Default price per liter
-  static const String defaultCurrency = '₹'; // Default currency symbol
+  static const String _fuelTypesKey = 'fuel_types';
+  static const String _selectedFuelTypeKey = 'selected_fuel_type_id';
+
+  static const double defaultFuelPrice = 100.0;
+  static const String defaultCurrency = '₹';
   static const String defaultThemeMode = 'system';
 
   late SharedPreferences _prefs;
 
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
+    await _migrateLegacyFuelSettings();
+  }
+
+  Future<void> _migrateLegacyFuelSettings() async {
+    final existingFuelTypes = _prefs.getString(_fuelTypesKey);
+    if (existingFuelTypes == null || existingFuelTypes.isEmpty) {
+      final legacyPrice = _prefs.getDouble(_fuelPriceKey) ?? defaultFuelPrice;
+      final defaultFuelType = FuelType(
+        id: FuelType.defaultId,
+        name: FuelType.defaultName,
+        pricePerLiter: legacyPrice,
+        active: true,
+      );
+      await _prefs.setString(
+          _fuelTypesKey, FuelType.encodeFuelTypes([defaultFuelType]));
+    }
+
+    if ((_prefs.getString(_selectedFuelTypeKey) ?? '').isEmpty) {
+      await _prefs.setString(_selectedFuelTypeKey, FuelType.defaultId);
+    }
+
+    final rawRecords = _prefs.getString(_recordsKey);
+    if (rawRecords == null || rawRecords.isEmpty) {
+      return;
+    }
+
+    try {
+      final decoded = jsonDecode(rawRecords);
+      if (decoded is! List) {
+        return;
+      }
+
+      bool changed = false;
+      for (final item in decoded) {
+        if (item is Map<String, dynamic>) {
+          if ((item['fuelTypeId'] as String?)?.trim().isNotEmpty != true) {
+            item['fuelTypeId'] = FuelType.defaultId;
+            changed = true;
+          }
+        } else if (item is Map) {
+          if ((item['fuelTypeId'] as String?)?.trim().isNotEmpty != true) {
+            item['fuelTypeId'] = FuelType.defaultId;
+            changed = true;
+          }
+        }
+      }
+
+      if (changed) {
+        await _prefs.setString(_recordsKey, jsonEncode(decoded));
+      }
+    } catch (_) {
+      // Keep existing data untouched if migration parsing fails.
+    }
   }
 
   /// Get all stored fill records, sorted by date (newest first)
   List<FillRecord> getRecords() {
     final String? jsonString = _prefs.getString(_recordsKey);
-    if (jsonString == null || jsonString.isEmpty) return [];
-    
+    if (jsonString == null || jsonString.isEmpty) {
+      return [];
+    }
+
     final records = FillRecord.decodeRecords(jsonString);
     records.sort((a, b) => b.date.compareTo(a.date));
     return records;
@@ -56,13 +118,99 @@ class StorageService {
     }
   }
 
-  /// Get fuel price per liter
+  /// Get all configured fuel types
+  List<FuelType> getFuelTypes() {
+    final jsonString = _prefs.getString(_fuelTypesKey);
+    if (jsonString == null || jsonString.isEmpty) {
+      return [
+        FuelType(
+          id: FuelType.defaultId,
+          name: FuelType.defaultName,
+          pricePerLiter: _prefs.getDouble(_fuelPriceKey) ?? defaultFuelPrice,
+          active: true,
+        ),
+      ];
+    }
+
+    final fuelTypes = FuelType.decodeFuelTypes(jsonString);
+    if (fuelTypes.isEmpty) {
+      return [
+        FuelType(
+          id: FuelType.defaultId,
+          name: FuelType.defaultName,
+          pricePerLiter: _prefs.getDouble(_fuelPriceKey) ?? defaultFuelPrice,
+          active: true,
+        ),
+      ];
+    }
+    return fuelTypes;
+  }
+
+  Future<void> saveFuelTypes(List<FuelType> fuelTypes) async {
+    await _prefs.setString(_fuelTypesKey, FuelType.encodeFuelTypes(fuelTypes));
+  }
+
+  String getSelectedFuelTypeId() {
+    final selected = _prefs.getString(_selectedFuelTypeKey);
+    if ((selected ?? '').isNotEmpty) {
+      return selected!;
+    }
+
+    final fuelTypes = getFuelTypes();
+    final active = fuelTypes.where((fuelType) => fuelType.active).toList();
+    return active.isNotEmpty ? active.first.id : fuelTypes.first.id;
+  }
+
+  Future<void> setSelectedFuelTypeId(String id) async {
+    await _prefs.setString(_selectedFuelTypeKey, id);
+  }
+
+  /// Backward-compatible getter: returns selected fuel type price.
   double getFuelPrice() {
+    final fuelTypes = getFuelTypes();
+    final selectedId = getSelectedFuelTypeId();
+    final selected =
+        fuelTypes.where((fuelType) => fuelType.id == selectedId).toList();
+
+    if (selected.isNotEmpty) {
+      return selected.first.pricePerLiter;
+    }
+
+    final active = fuelTypes.where((fuelType) => fuelType.active).toList();
+    if (active.isNotEmpty) {
+      return active.first.pricePerLiter;
+    }
+
     return _prefs.getDouble(_fuelPriceKey) ?? defaultFuelPrice;
   }
 
-  /// Set fuel price per liter
+  /// Backward-compatible setter: updates selected fuel type price.
   Future<void> setFuelPrice(double price) async {
+    final fuelTypes = getFuelTypes();
+    final selectedId = getSelectedFuelTypeId();
+
+    bool updated = false;
+    final updatedFuelTypes = fuelTypes.map((fuelType) {
+      if (fuelType.id == selectedId) {
+        updated = true;
+        return fuelType.copyWith(pricePerLiter: price);
+      }
+      return fuelType;
+    }).toList();
+
+    if (!updated) {
+      updatedFuelTypes.add(
+        FuelType(
+          id: FuelType.defaultId,
+          name: FuelType.defaultName,
+          pricePerLiter: price,
+          active: true,
+        ),
+      );
+      await setSelectedFuelTypeId(FuelType.defaultId);
+    }
+
+    await saveFuelTypes(updatedFuelTypes);
     await _prefs.setDouble(_fuelPriceKey, price);
   }
 

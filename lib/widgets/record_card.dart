@@ -33,6 +33,7 @@ class RecordCard extends StatelessWidget {
     final fuelLiters = stats['fuelLiters'] as double;
     final mileage = stats['mileage'] as double;
     final daysSinceLastFill = stats['daysSinceLastFill'] as int;
+    final fuelTypeName = stats['fuelTypeName'] as String? ?? 'Regular';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -79,26 +80,52 @@ class RecordCard extends StatelessWidget {
                               children: [
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         dateFormat.format(record.date),
-                                        style: theme.textTheme.titleMedium?.copyWith(
+                                        style: theme.textTheme.titleMedium
+                                            ?.copyWith(
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
                                         timeFormat.format(record.date),
-                                        style: theme.textTheme.bodySmall?.copyWith(
-                                          color: colorScheme.onSurface.withOpacity(0.6),
+                                        style:
+                                            theme.textTheme.bodySmall?.copyWith(
+                                          color: colorScheme.onSurface
+                                              .withOpacity(0.6),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 5,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary
+                                              .withOpacity(0.12),
+                                          borderRadius:
+                                              BorderRadius.circular(999),
+                                        ),
+                                        child: Text(
+                                          fuelTypeName,
+                                          style: theme.textTheme.labelSmall
+                                              ?.copyWith(
+                                            color: AppColors.primary,
+                                            fontWeight: FontWeight.w700,
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8),
                                   decoration: BoxDecoration(
                                     color: isDark
                                         ? AppColors.surfaceDarkElevated
@@ -106,7 +133,8 @@ class RecordCard extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                       color: isDark
-                                          ? AppColors.outlineDark.withOpacity(0.6)
+                                          ? AppColors.outlineDark
+                                              .withOpacity(0.6)
                                           : AppColors.outlineLight,
                                     ),
                                   ),
@@ -115,12 +143,14 @@ class RecordCard extends StatelessWidget {
                                       Icon(
                                         Icons.speed_rounded,
                                         size: 16,
-                                        color: colorScheme.onSurface.withOpacity(0.6),
+                                        color: colorScheme.onSurface
+                                            .withOpacity(0.6),
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
                                         '${record.odometerKm.toStringAsFixed(0)} km',
-                                        style: theme.textTheme.bodySmall?.copyWith(
+                                        style:
+                                            theme.textTheme.bodySmall?.copyWith(
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
@@ -138,8 +168,10 @@ class RecordCard extends StatelessWidget {
                                   children: [
                                     Text(
                                       'Efficiency',
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        color: colorScheme.onSurface.withOpacity(0.6),
+                                      style:
+                                          theme.textTheme.bodySmall?.copyWith(
+                                        color: colorScheme.onSurface
+                                            .withOpacity(0.6),
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -148,10 +180,12 @@ class RecordCard extends StatelessWidget {
                                       isFirstRecord
                                           ? '-- km/L'
                                           : '${mileage.toStringAsFixed(1)} km/L',
-                                      style: theme.textTheme.headlineSmall?.copyWith(
+                                      style: theme.textTheme.headlineSmall
+                                          ?.copyWith(
                                         fontWeight: FontWeight.w700,
                                         color: isFirstRecord
-                                            ? colorScheme.onSurface.withOpacity(0.4)
+                                            ? colorScheme.onSurface
+                                                .withOpacity(0.4)
                                             : AppColors.primary,
                                       ),
                                     ),
@@ -160,8 +194,10 @@ class RecordCard extends StatelessWidget {
                                         padding: const EdgeInsets.only(top: 4),
                                         child: Text(
                                           'Recorded efficiency',
-                                          style: theme.textTheme.bodySmall?.copyWith(
-                                            color: colorScheme.onSurface.withOpacity(0.5),
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                            color: colorScheme.onSurface
+                                                .withOpacity(0.5),
                                           ),
                                         ),
                                       ),
@@ -172,17 +208,22 @@ class RecordCard extends StatelessWidget {
                                   children: [
                                     Text(
                                       'Total Cost',
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        color: colorScheme.onSurface.withOpacity(0.6),
+                                      style:
+                                          theme.textTheme.bodySmall?.copyWith(
+                                        color: colorScheme.onSurface
+                                            .withOpacity(0.6),
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                     const SizedBox(height: 6),
                                     Text(
                                       '$currency${CurrencyUtils.formatAmount(record.cost, currency)}',
-                                      style: theme.textTheme.headlineSmall?.copyWith(
+                                      style: theme.textTheme.headlineSmall
+                                          ?.copyWith(
                                         fontWeight: FontWeight.w700,
-                                        color: isDark ? AppColors.accentAmber : colorScheme.onSurface,
+                                        color: isDark
+                                            ? AppColors.accentAmber
+                                            : colorScheme.onSurface,
                                       ),
                                     ),
                                   ],
@@ -195,29 +236,38 @@ class RecordCard extends StatelessWidget {
                               decoration: BoxDecoration(
                                 border: Border.symmetric(
                                   horizontal: BorderSide(
-                                    color: colorScheme.onSurface.withOpacity(0.08),
+                                    color:
+                                        colorScheme.onSurface.withOpacity(0.08),
                                   ),
                                 ),
                               ),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   _MetricChip(
                                     icon: Icons.water_drop_rounded,
                                     label: 'Volume',
                                     value: '${fuelLiters.toStringAsFixed(1)} L',
                                   ),
-                                  _MetricDivider(color: colorScheme.onSurface.withOpacity(0.08)),
+                                  _MetricDivider(
+                                      color: colorScheme.onSurface
+                                          .withOpacity(0.08)),
                                   _MetricChip(
                                     icon: Icons.route_rounded,
                                     label: 'Distance',
-                                    value: '${distanceKm.toStringAsFixed(0)} km',
+                                    value:
+                                        '${distanceKm.toStringAsFixed(0)} km',
                                   ),
-                                  _MetricDivider(color: colorScheme.onSurface.withOpacity(0.08)),
+                                  _MetricDivider(
+                                      color: colorScheme.onSurface
+                                          .withOpacity(0.08)),
                                   _MetricChip(
                                     icon: Icons.calendar_today_rounded,
                                     label: 'Interval',
-                                    value: isFirstRecord ? '--' : '$daysSinceLastFill days',
+                                    value: isFirstRecord
+                                        ? '--'
+                                        : '$daysSinceLastFill days',
                                   ),
                                 ],
                               ),
@@ -237,14 +287,17 @@ class RecordCard extends StatelessWidget {
                                     Icon(
                                       Icons.note_rounded,
                                       size: 16,
-                                      color: colorScheme.onSurface.withOpacity(0.6),
+                                      color: colorScheme.onSurface
+                                          .withOpacity(0.6),
                                     ),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
                                         record.notes,
-                                        style: theme.textTheme.bodySmall?.copyWith(
-                                          color: colorScheme.onSurface.withOpacity(0.7),
+                                        style:
+                                            theme.textTheme.bodySmall?.copyWith(
+                                          color: colorScheme.onSurface
+                                              .withOpacity(0.7),
                                           fontStyle: FontStyle.italic,
                                         ),
                                       ),
@@ -256,7 +309,8 @@ class RecordCard extends StatelessWidget {
                             if (isFirstRecord) ...[
                               const SizedBox(height: 12),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 6),
                                 decoration: BoxDecoration(
                                   color: AppColors.primary.withOpacity(0.12),
                                   borderRadius: BorderRadius.circular(20),
@@ -272,7 +326,8 @@ class RecordCard extends StatelessWidget {
                                     const SizedBox(width: 6),
                                     Text(
                                       'First record - stats on next fill',
-                                      style: theme.textTheme.bodySmall?.copyWith(
+                                      style:
+                                          theme.textTheme.bodySmall?.copyWith(
                                         color: AppColors.primary,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -287,19 +342,23 @@ class RecordCard extends StatelessWidget {
                               children: [
                                 IconButton(
                                   onPressed: onEdit,
-                                  icon: const Icon(Icons.edit_rounded, size: 20),
+                                  icon:
+                                      const Icon(Icons.edit_rounded, size: 20),
                                   color: AppColors.primary,
                                   style: IconButton.styleFrom(
-                                    backgroundColor: AppColors.primary.withOpacity(0.12),
+                                    backgroundColor:
+                                        AppColors.primary.withOpacity(0.12),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
                                 IconButton(
                                   onPressed: () => _showDeleteDialog(context),
-                                  icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                                  icon: const Icon(Icons.delete_outline_rounded,
+                                      size: 20),
                                   color: colorScheme.error,
                                   style: IconButton.styleFrom(
-                                    backgroundColor: colorScheme.error.withOpacity(0.12),
+                                    backgroundColor:
+                                        colorScheme.error.withOpacity(0.12),
                                   ),
                                 ),
                               ],
@@ -323,7 +382,8 @@ class RecordCard extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Record'),
-        content: const Text('Are you sure you want to delete this fill record?'),
+        content:
+            const Text('Are you sure you want to delete this fill record?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),

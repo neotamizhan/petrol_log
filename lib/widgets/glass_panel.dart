@@ -33,7 +33,9 @@ class GlassPanel extends StatelessWidget {
 
     final panelBorder = border ??
         Border.all(
-          color: isDark ? AppColors.outlineDark.withOpacity(0.6) : AppColors.outlineLight,
+          color: isDark
+              ? AppColors.outlineDark.withOpacity(0.6)
+              : AppColors.outlineLight,
         );
 
     final panelShadow = boxShadow ??

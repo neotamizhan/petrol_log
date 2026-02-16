@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'fuel_type.dart';
 
 class FillRecord {
   final String id;
@@ -6,6 +7,7 @@ class FillRecord {
   final double odometerKm;
   final double cost;
   final String notes;
+  final String fuelTypeId;
 
   FillRecord({
     required this.id,
@@ -13,7 +15,26 @@ class FillRecord {
     required this.odometerKm,
     required this.cost,
     this.notes = '',
+    this.fuelTypeId = FuelType.defaultId,
   });
+
+  FillRecord copyWith({
+    String? id,
+    DateTime? date,
+    double? odometerKm,
+    double? cost,
+    String? notes,
+    String? fuelTypeId,
+  }) {
+    return FillRecord(
+      id: id ?? this.id,
+      date: date ?? this.date,
+      odometerKm: odometerKm ?? this.odometerKm,
+      cost: cost ?? this.cost,
+      notes: notes ?? this.notes,
+      fuelTypeId: fuelTypeId ?? this.fuelTypeId,
+    );
+  }
 
   /// Calculate distance traveled since the previous fill
   double getDistanceSinceLastFill(FillRecord? previousRecord) {
@@ -49,6 +70,7 @@ class FillRecord {
       'odometerKm': odometerKm,
       'cost': cost,
       'notes': notes,
+      'fuelTypeId': fuelTypeId,
     };
   }
 
@@ -60,6 +82,9 @@ class FillRecord {
       odometerKm: (json['odometerKm'] as num).toDouble(),
       cost: (json['cost'] as num).toDouble(),
       notes: json['notes'] as String? ?? '',
+      fuelTypeId: (json['fuelTypeId'] as String?)?.trim().isNotEmpty == true
+          ? (json['fuelTypeId'] as String).trim()
+          : FuelType.defaultId,
     );
   }
 
@@ -77,6 +102,6 @@ class FillRecord {
 
   @override
   String toString() {
-    return 'FillRecord(id: $id, date: $date, odometerKm: $odometerKm, cost: $cost, notes: $notes)';
+    return 'FillRecord(id: $id, date: $date, odometerKm: $odometerKm, cost: $cost, fuelTypeId: $fuelTypeId, notes: $notes)';
   }
 }
