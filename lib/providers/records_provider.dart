@@ -29,7 +29,7 @@ class RecordsProvider with ChangeNotifier {
   List<Vehicle> get vehicles => List<Vehicle>.unmodifiable(_vehicles);
   List<Vehicle> get activeVehicles =>
       _vehicles.where((vehicle) => vehicle.active).toList();
-  String get selectedVehicleId => _selectedVehicleId;
+  String get selectedVehicleId => _resolveSelectedVehicleId(_selectedVehicleId);
 
   FuelType? get selectedFuelType {
     for (final fuelType in _fuelTypes) {
@@ -41,8 +41,9 @@ class RecordsProvider with ChangeNotifier {
   }
 
   Vehicle? get selectedVehicle {
+    final resolvedId = selectedVehicleId;
     for (final vehicle in _vehicles) {
-      if (vehicle.id == _selectedVehicleId) {
+      if (vehicle.id == resolvedId) {
         return vehicle;
       }
     }
@@ -99,8 +100,10 @@ class RecordsProvider with ChangeNotifier {
   }
 
   /// Get the previous record for a given record (by date)
-  FillRecord? getPreviousRecord(FillRecord record, {String? fuelTypeId, String? vehicleId}) {
-    final sortedRecords = _filteredRecordsByFuelTypeAndVehicle(fuelTypeId, vehicleId ?? record.vehicleId);
+  FillRecord? getPreviousRecord(FillRecord record,
+      {String? fuelTypeId, String? vehicleId}) {
+    final sortedRecords = _filteredRecordsByFuelTypeAndVehicle(
+        fuelTypeId, vehicleId ?? record.vehicleId);
     final index = sortedRecords.indexWhere((r) => r.id == record.id);
     if (index <= 0) {
       return null;
@@ -118,14 +121,20 @@ class RecordsProvider with ChangeNotifier {
     _selectedFuelTypeId = _resolveSelectedFuelTypeId(
       _storageService.getSelectedFuelTypeId(),
     );
-    _vehicles = _storageService.getVehicles();
-    _selectedVehicleId = _storageService.getSelectedVehicleId();
+    _vehicles = _sanitizeVehicles(_storageService.getVehicles());
+    _selectedVehicleId = _resolveSelectedVehicleId(
+      _storageService.getSelectedVehicleId(),
+    );
     _records = _normalizeRecordFuelTypes(_storageService.getRecords());
     _currency = _storageService.getCurrency();
     _themeMode = _parseThemeMode(_storageService.getThemeMode());
 
     await _storageService.saveFuelTypes(_fuelTypes);
     await _storageService.setSelectedFuelTypeId(_selectedFuelTypeId);
+    await _storageService.saveVehicles(_vehicles);
+    if (_vehicles.isNotEmpty) {
+      await _storageService.setSelectedVehicle(_selectedVehicleId);
+    }
     await _storageService.saveRecords(_records);
 
     _isLoading = false;
@@ -187,6 +196,50 @@ class RecordsProvider with ChangeNotifier {
     return _fuelTypes.first.id;
   }
 
+  List<Vehicle> _sanitizeVehicles(List<Vehicle> incoming) {
+    final Map<String, Vehicle> byId = {};
+
+    for (final vehicle in incoming) {
+      final normalizedId = vehicle.id.trim();
+      if (normalizedId.isEmpty) {
+        continue;
+      }
+
+      final normalizedName =
+          vehicle.name.trim().isNotEmpty ? vehicle.name.trim() : 'Vehicle';
+
+      byId[normalizedId] = vehicle.copyWith(
+        id: normalizedId,
+        name: normalizedName,
+      );
+    }
+
+    final result = byId.values.toList();
+    if (result.isNotEmpty && result.every((vehicle) => !vehicle.active)) {
+      result[0] = result[0].copyWith(active: true);
+    }
+    return result;
+  }
+
+  String _resolveSelectedVehicleId(String preferredId) {
+    final preferred =
+        _vehicles.where((vehicle) => vehicle.id == preferredId).toList();
+    if (preferred.length == 1 && preferred.first.active) {
+      return preferred.first.id;
+    }
+
+    final active = activeVehicles;
+    if (active.isNotEmpty) {
+      return active.first.id;
+    }
+
+    if (_vehicles.isNotEmpty) {
+      return _vehicles.first.id;
+    }
+
+    return preferredId;
+  }
+
   List<FillRecord> _normalizeRecordFuelTypes(List<FillRecord> incoming) {
     final validIds = _fuelTypes.map((fuelType) => fuelType.id).toSet();
     final fallbackId = _selectedFuelTypeId;
@@ -208,16 +261,19 @@ class RecordsProvider with ChangeNotifier {
     return record.copyWith(fuelTypeId: _selectedFuelTypeId);
   }
 
-  List<FillRecord> _filteredRecordsByFuelTypeAndVehicle(String? fuelTypeId, String? vehicleId) {
+  List<FillRecord> _filteredRecordsByFuelTypeAndVehicle(
+      String? fuelTypeId, String? vehicleId) {
     final sorted = recordsByDateAsc;
     var filtered = sorted;
 
     if (vehicleId != null && vehicleId != 'all') {
-      filtered = filtered.where((record) => record.vehicleId == vehicleId).toList();
+      filtered =
+          filtered.where((record) => record.vehicleId == vehicleId).toList();
     }
 
     if (fuelTypeId != null && fuelTypeId != 'all') {
-      filtered = filtered.where((record) => record.fuelTypeId == fuelTypeId).toList();
+      filtered =
+          filtered.where((record) => record.fuelTypeId == fuelTypeId).toList();
     }
 
     return filtered;
@@ -232,8 +288,11 @@ class RecordsProvider with ChangeNotifier {
     // Update vehicle's current odometer
     final vehicle = getVehicleById(normalized.vehicleId);
     if (vehicle != null && normalized.odometerKm > vehicle.currentOdometer) {
-      final updatedVehicle = vehicle.copyWith(currentOdometer: normalized.odometerKm);
-      _vehicles = _vehicles.map((v) => v.id == vehicle.id ? updatedVehicle : v).toList();
+      final updatedVehicle =
+          vehicle.copyWith(currentOdometer: normalized.odometerKm);
+      _vehicles = _vehicles
+          .map((v) => v.id == vehicle.id ? updatedVehicle : v)
+          .toList();
       await _storageService.saveVehicles(_vehicles);
     }
 
@@ -407,8 +466,10 @@ class RecordsProvider with ChangeNotifier {
   }
 
   /// Get overall statistics for all records, or a specific fuel type and vehicle.
-  Map<String, dynamic> getOverallStats({String? fuelTypeId, String? vehicleId}) {
-    final filteredRecords = _filteredRecordsByFuelTypeAndVehicle(fuelTypeId, vehicleId);
+  Map<String, dynamic> getOverallStats(
+      {String? fuelTypeId, String? vehicleId}) {
+    final filteredRecords =
+        _filteredRecordsByFuelTypeAndVehicle(fuelTypeId, vehicleId);
 
     if (filteredRecords.isEmpty) {
       return {
@@ -523,8 +584,10 @@ class RecordsProvider with ChangeNotifier {
 
   /// Predict when and where the next refill will likely happen.
   /// Returns null if there is not enough valid interval data.
-  Map<String, dynamic>? getRefillForecast({DateTime? now, String? fuelTypeId, String? vehicleId}) {
-    final sortedRecords = _filteredRecordsByFuelTypeAndVehicle(fuelTypeId, vehicleId);
+  Map<String, dynamic>? getRefillForecast(
+      {DateTime? now, String? fuelTypeId, String? vehicleId}) {
+    final sortedRecords =
+        _filteredRecordsByFuelTypeAndVehicle(fuelTypeId, vehicleId);
     if (sortedRecords.length < 2) {
       return null;
     }
@@ -710,20 +773,28 @@ class RecordsProvider with ChangeNotifier {
 
   /// Add a new vehicle
   Future<void> addVehicle(Vehicle vehicle) async {
-    _vehicles = [..._vehicles, vehicle];
+    _vehicles = _sanitizeVehicles([..._vehicles, vehicle]);
+    _selectedVehicleId = _resolveSelectedVehicleId(_selectedVehicleId);
     await _storageService.saveVehicles(_vehicles);
+    if (_vehicles.isNotEmpty) {
+      await _storageService.setSelectedVehicle(_selectedVehicleId);
+    }
     notifyListeners();
   }
 
   /// Update an existing vehicle
   Future<void> updateVehicle(Vehicle updatedVehicle) async {
-    _vehicles = _vehicles.map((v) {
+    _vehicles = _sanitizeVehicles(_vehicles.map((v) {
       if (v.id == updatedVehicle.id) {
         return updatedVehicle;
       }
       return v;
-    }).toList();
+    }).toList());
+    _selectedVehicleId = _resolveSelectedVehicleId(_selectedVehicleId);
     await _storageService.saveVehicles(_vehicles);
+    if (_vehicles.isNotEmpty) {
+      await _storageService.setSelectedVehicle(_selectedVehicleId);
+    }
     notifyListeners();
   }
 
@@ -747,16 +818,15 @@ class RecordsProvider with ChangeNotifier {
       _vehicles = _vehicles.where((v) => v.id != vehicleId).toList();
     }
 
-    // If the deleted vehicle was selected, switch to the first active vehicle
-    if (_selectedVehicleId == vehicleId) {
-      final activeVehicles = _vehicles.where((v) => v.active).toList();
-      if (activeVehicles.isNotEmpty) {
-        _selectedVehicleId = activeVehicles.first.id;
-        await _storageService.setSelectedVehicle(_selectedVehicleId);
-      }
-    }
+    _vehicles = _sanitizeVehicles(_vehicles);
+    _selectedVehicleId = _resolveSelectedVehicleId(
+      _selectedVehicleId == vehicleId ? '' : _selectedVehicleId,
+    );
 
     await _storageService.saveVehicles(_vehicles);
+    if (_vehicles.isNotEmpty) {
+      await _storageService.setSelectedVehicle(_selectedVehicleId);
+    }
     notifyListeners();
   }
 

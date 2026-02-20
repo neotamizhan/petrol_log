@@ -26,7 +26,8 @@ class HomeScreen extends StatelessWidget {
         child: Consumer<RecordsProvider>(
           builder: (context, provider, child) {
             final selectedVehicleId = provider.selectedVehicleId;
-            final stats = provider.getOverallStats(vehicleId: selectedVehicleId);
+            final stats =
+                provider.getOverallStats(vehicleId: selectedVehicleId);
             final sorted = provider.records
                 .where((record) => record.vehicleId == selectedVehicleId)
                 .toList()
@@ -35,7 +36,8 @@ class HomeScreen extends StatelessWidget {
             final lastRefuelDays = latest == null
                 ? null
                 : DateTime.now().difference(latest.date).inDays;
-            final forecast = provider.getRefillForecast(vehicleId: selectedVehicleId);
+            final forecast =
+                provider.getRefillForecast(vehicleId: selectedVehicleId);
 
             return Stack(
               children: [
@@ -791,10 +793,27 @@ class _VehicleSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final activeVehicles = provider.activeVehicles;
+    final seenVehicleIds = <String>{};
+    final activeVehicles = provider.activeVehicles
+        .where((vehicle) => seenVehicleIds.add(vehicle.id))
+        .toList();
 
     if (activeVehicles.isEmpty) {
       return const SizedBox.shrink();
+    }
+
+    final selectedVehicleId = provider.selectedVehicleId;
+    final selectedIsValid =
+        activeVehicles.any((vehicle) => vehicle.id == selectedVehicleId);
+    final dropdownValue =
+        selectedIsValid ? selectedVehicleId : activeVehicles.first.id;
+
+    if (!selectedIsValid) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (provider.selectedVehicleId != dropdownValue) {
+          provider.setSelectedVehicle(dropdownValue);
+        }
+      });
     }
 
     return GlassPanel(
@@ -824,7 +843,7 @@ class _VehicleSelector extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: DropdownButton<String>(
-              value: provider.selectedVehicleId,
+              value: dropdownValue,
               isExpanded: true,
               underline: const SizedBox.shrink(),
               items: activeVehicles.map((vehicle) {
