@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/fill_record.dart';
 import '../models/fuel_type.dart';
+import '../models/vehicle.dart';
 
 class StorageService {
   static const String _recordsKey = 'fill_records';
@@ -12,6 +13,8 @@ class StorageService {
   static const String _themeModeKey = 'theme_mode';
   static const String _fuelTypesKey = 'fuel_types';
   static const String _selectedFuelTypeKey = 'selected_fuel_type_id';
+  static const String _vehiclesKey = 'vehicles';
+  static const String _selectedVehicleKey = 'selected_vehicle_id';
 
   static const double defaultFuelPrice = 100.0;
   static const String defaultCurrency = '₹';
@@ -22,6 +25,7 @@ class StorageService {
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
     await _migrateLegacyFuelSettings();
+    await _migrateToVehicleSupport();
   }
 
   Future<void> _migrateLegacyFuelSettings() async {
@@ -232,5 +236,75 @@ class StorageService {
   /// Set app theme mode
   Future<void> setThemeMode(String themeMode) async {
     await _prefs.setString(_themeModeKey, themeMode);
+  }
+
+  /// Get all vehicles
+  List<Vehicle> getVehicles() {
+    final jsonString = _prefs.getString(_vehiclesKey);
+    if (jsonString == null || jsonString.isEmpty) {
+      return [];
+    }
+    return Vehicle.decodeVehicles(jsonString);
+  }
+
+  /// Save all vehicles
+  Future<void> saveVehicles(List<Vehicle> vehicles) async {
+    final jsonString = Vehicle.encodeVehicles(vehicles);
+    await _prefs.setString(_vehiclesKey, jsonString);
+  }
+
+  /// Get the selected vehicle ID
+  String getSelectedVehicleId() {
+    final selected = _prefs.getString(_selectedVehicleKey);
+    if (selected != null && selected.isNotEmpty) {
+      return selected;
+    }
+
+    // Default to first vehicle if none selected
+    final vehicles = getVehicles();
+    if (vehicles.isNotEmpty) {
+      return vehicles.first.id;
+    }
+
+    return 'default_vehicle';
+  }
+
+  /// Set the selected vehicle
+  Future<void> setSelectedVehicle(String vehicleId) async {
+    await _prefs.setString(_selectedVehicleKey, vehicleId);
+  }
+
+  /// Migrate existing data to support vehicles
+  Future<void> _migrateToVehicleSupport() async {
+    final vehicles = getVehicles();
+
+    // Only migrate if no vehicles exist but records do
+    if (vehicles.isEmpty && getRecords().isNotEmpty) {
+      final records = getRecords();
+
+      // Find the latest odometer reading from existing records
+      final latestOdometer = records.isNotEmpty ? records.first.odometerKm : 0.0;
+
+      // Create default vehicle
+      final defaultVehicle = Vehicle(
+        id: 'default_vehicle',
+        name: 'My Vehicle',
+        make: '',
+        model: '',
+        currentOdometer: latestOdometer,
+        isDefault: true,
+        active: true,
+        createdAt: DateTime.now(),
+      );
+
+      await saveVehicles([defaultVehicle]);
+      await setSelectedVehicle(defaultVehicle.id);
+
+      // Update all existing records with the default vehicleId
+      final updatedRecords = records.map((r) {
+        return r.copyWith(vehicleId: defaultVehicle.id);
+      }).toList();
+      await saveRecords(updatedRecords);
+    }
   }
 }

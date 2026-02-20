@@ -8,6 +8,7 @@ class FillRecord {
   final double cost;
   final String notes;
   final String fuelTypeId;
+  final String vehicleId;
 
   FillRecord({
     required this.id,
@@ -16,6 +17,7 @@ class FillRecord {
     required this.cost,
     this.notes = '',
     this.fuelTypeId = FuelType.defaultId,
+    this.vehicleId = 'default_vehicle',
   });
 
   FillRecord copyWith({
@@ -25,6 +27,7 @@ class FillRecord {
     double? cost,
     String? notes,
     String? fuelTypeId,
+    String? vehicleId,
   }) {
     return FillRecord(
       id: id ?? this.id,
@@ -33,6 +36,7 @@ class FillRecord {
       cost: cost ?? this.cost,
       notes: notes ?? this.notes,
       fuelTypeId: fuelTypeId ?? this.fuelTypeId,
+      vehicleId: vehicleId ?? this.vehicleId,
     );
   }
 
@@ -71,6 +75,7 @@ class FillRecord {
       'cost': cost,
       'notes': notes,
       'fuelTypeId': fuelTypeId,
+      'vehicleId': vehicleId,
     };
   }
 
@@ -85,6 +90,7 @@ class FillRecord {
       fuelTypeId: (json['fuelTypeId'] as String?)?.trim().isNotEmpty == true
           ? (json['fuelTypeId'] as String).trim()
           : FuelType.defaultId,
+      vehicleId: json['vehicleId'] as String? ?? 'default_vehicle',
     );
   }
 
@@ -102,6 +108,6 @@ class FillRecord {
 
   @override
   String toString() {
-    return 'FillRecord(id: $id, date: $date, odometerKm: $odometerKm, cost: $cost, fuelTypeId: $fuelTypeId, notes: $notes)';
+    return 'FillRecord(id: $id, date: $date, odometerKm: $odometerKm, cost: $cost, fuelTypeId: $fuelTypeId, vehicleId: $vehicleId, notes: $notes)';
   }
 }

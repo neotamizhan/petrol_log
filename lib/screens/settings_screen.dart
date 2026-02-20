@@ -7,6 +7,7 @@ import '../services/import_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
 import '../widgets/glass_panel.dart';
+import 'vehicles_screen.dart';
 
 const List<Map<String, String>> _currencies = [
   {'symbol': '₹', 'name': 'Indian Rupee (INR)'},
@@ -398,6 +399,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 24),
+            _SectionHeader(
+              icon: Icons.directions_car_rounded,
+              title: 'Vehicles',
+            ),
+            Consumer<RecordsProvider>(
+              builder: (context, provider, child) {
+                final vehicleCount = provider.vehicles.length;
+                return GlassPanel(
+                  color: isDark
+                      ? AppColors.settingsCardDark.withOpacity(0.45)
+                      : null,
+                  padding: const EdgeInsets.all(18),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Row(
+                    children: [
+                      Container(
+                        height: 42,
+                        width: 42,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.directions_car_rounded,
+                            color: AppColors.primary),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Vehicle Management',
+                              style: theme.textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            Text(
+                              '$vehicleCount vehicle${vehicleCount == 1 ? '' : 's'} configured',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurface.withOpacity(0.6),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      FilledButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const VehiclesScreen(),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.tune_rounded, size: 18),
+                        label: const Text('Manage'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 10),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 24),
             _SectionHeader(

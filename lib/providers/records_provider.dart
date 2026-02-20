@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../models/fill_record.dart';
 import '../models/fuel_type.dart';
+import '../models/vehicle.dart';
 import '../services/storage_service.dart';
 
 class RecordsProvider with ChangeNotifier {
@@ -12,6 +13,8 @@ class RecordsProvider with ChangeNotifier {
   List<FillRecord> _records = [];
   List<FuelType> _fuelTypes = [];
   String _selectedFuelTypeId = FuelType.defaultId;
+  List<Vehicle> _vehicles = [];
+  String _selectedVehicleId = 'default_vehicle';
   String _currency = StorageService.defaultCurrency;
   ThemeMode _themeMode = ThemeMode.system;
   bool _isLoading = true;
@@ -23,6 +26,10 @@ class RecordsProvider with ChangeNotifier {
   List<FuelType> get activeFuelTypes =>
       _fuelTypes.where((fuelType) => fuelType.active).toList();
   String get selectedFuelTypeId => _selectedFuelTypeId;
+  List<Vehicle> get vehicles => List<Vehicle>.unmodifiable(_vehicles);
+  List<Vehicle> get activeVehicles =>
+      _vehicles.where((vehicle) => vehicle.active).toList();
+  String get selectedVehicleId => _selectedVehicleId;
 
   FuelType? get selectedFuelType {
     for (final fuelType in _fuelTypes) {
@@ -31,6 +38,15 @@ class RecordsProvider with ChangeNotifier {
       }
     }
     return _fuelTypes.isNotEmpty ? _fuelTypes.first : null;
+  }
+
+  Vehicle? get selectedVehicle {
+    for (final vehicle in _vehicles) {
+      if (vehicle.id == _selectedVehicleId) {
+        return vehicle;
+      }
+    }
+    return _vehicles.isNotEmpty ? _vehicles.first : null;
   }
 
   /// Backward-compatible getter used by existing UI.
@@ -83,8 +99,8 @@ class RecordsProvider with ChangeNotifier {
   }
 
   /// Get the previous record for a given record (by date)
-  FillRecord? getPreviousRecord(FillRecord record, {String? fuelTypeId}) {
-    final sortedRecords = _filteredRecordsByFuelType(fuelTypeId);
+  FillRecord? getPreviousRecord(FillRecord record, {String? fuelTypeId, String? vehicleId}) {
+    final sortedRecords = _filteredRecordsByFuelTypeAndVehicle(fuelTypeId, vehicleId ?? record.vehicleId);
     final index = sortedRecords.indexWhere((r) => r.id == record.id);
     if (index <= 0) {
       return null;
@@ -102,6 +118,8 @@ class RecordsProvider with ChangeNotifier {
     _selectedFuelTypeId = _resolveSelectedFuelTypeId(
       _storageService.getSelectedFuelTypeId(),
     );
+    _vehicles = _storageService.getVehicles();
+    _selectedVehicleId = _storageService.getSelectedVehicleId();
     _records = _normalizeRecordFuelTypes(_storageService.getRecords());
     _currency = _storageService.getCurrency();
     _themeMode = _parseThemeMode(_storageService.getThemeMode());
@@ -190,12 +208,19 @@ class RecordsProvider with ChangeNotifier {
     return record.copyWith(fuelTypeId: _selectedFuelTypeId);
   }
 
-  List<FillRecord> _filteredRecordsByFuelType(String? fuelTypeId) {
+  List<FillRecord> _filteredRecordsByFuelTypeAndVehicle(String? fuelTypeId, String? vehicleId) {
     final sorted = recordsByDateAsc;
-    if (fuelTypeId == null || fuelTypeId == 'all') {
-      return sorted;
+    var filtered = sorted;
+
+    if (vehicleId != null && vehicleId != 'all') {
+      filtered = filtered.where((record) => record.vehicleId == vehicleId).toList();
     }
-    return sorted.where((record) => record.fuelTypeId == fuelTypeId).toList();
+
+    if (fuelTypeId != null && fuelTypeId != 'all') {
+      filtered = filtered.where((record) => record.fuelTypeId == fuelTypeId).toList();
+    }
+
+    return filtered;
   }
 
   /// Add a new fill record
@@ -203,6 +228,15 @@ class RecordsProvider with ChangeNotifier {
     final normalized = _normalizeRecord(record);
     await _storageService.addRecord(normalized);
     _records = _storageService.getRecords();
+
+    // Update vehicle's current odometer
+    final vehicle = getVehicleById(normalized.vehicleId);
+    if (vehicle != null && normalized.odometerKm > vehicle.currentOdometer) {
+      final updatedVehicle = vehicle.copyWith(currentOdometer: normalized.odometerKm);
+      _vehicles = _vehicles.map((v) => v.id == vehicle.id ? updatedVehicle : v).toList();
+      await _storageService.saveVehicles(_vehicles);
+    }
+
     notifyListeners();
   }
 
@@ -372,9 +406,9 @@ class RecordsProvider with ChangeNotifier {
     };
   }
 
-  /// Get overall statistics for all records, or a specific fuel type.
-  Map<String, dynamic> getOverallStats({String? fuelTypeId}) {
-    final filteredRecords = _filteredRecordsByFuelType(fuelTypeId);
+  /// Get overall statistics for all records, or a specific fuel type and vehicle.
+  Map<String, dynamic> getOverallStats({String? fuelTypeId, String? vehicleId}) {
+    final filteredRecords = _filteredRecordsByFuelTypeAndVehicle(fuelTypeId, vehicleId);
 
     if (filteredRecords.isEmpty) {
       return {
@@ -394,6 +428,7 @@ class RecordsProvider with ChangeNotifier {
         'lastFillDate': null,
         'totalDays': 0,
         'fuelTypeFilter': fuelTypeId,
+        'vehicleFilter': vehicleId,
       };
     }
 
@@ -482,13 +517,14 @@ class RecordsProvider with ChangeNotifier {
       'lastFillDate': lastDate,
       'totalDays': totalDays,
       'fuelTypeFilter': fuelTypeId,
+      'vehicleFilter': vehicleId,
     };
   }
 
   /// Predict when and where the next refill will likely happen.
   /// Returns null if there is not enough valid interval data.
-  Map<String, dynamic>? getRefillForecast({DateTime? now, String? fuelTypeId}) {
-    final sortedRecords = _filteredRecordsByFuelType(fuelTypeId);
+  Map<String, dynamic>? getRefillForecast({DateTime? now, String? fuelTypeId, String? vehicleId}) {
+    final sortedRecords = _filteredRecordsByFuelTypeAndVehicle(fuelTypeId, vehicleId);
     if (sortedRecords.length < 2) {
       return null;
     }
@@ -648,5 +684,98 @@ class RecordsProvider with ChangeNotifier {
     final variance = sumSquaredDiff / values.length;
     final standardDeviation = math.sqrt(variance);
     return (standardDeviation / mean).clamp(0.0, 1.2);
+  }
+
+  // Vehicle Management Methods
+
+  /// Get a vehicle by ID
+  Vehicle? getVehicleById(String id) {
+    for (final vehicle in _vehicles) {
+      if (vehicle.id == id) {
+        return vehicle;
+      }
+    }
+    return null;
+  }
+
+  /// Get all records for a specific vehicle
+  List<FillRecord> getRecordsForVehicle(String vehicleId) {
+    return _records.where((record) => record.vehicleId == vehicleId).toList();
+  }
+
+  /// Check if a vehicle has any associated records
+  bool hasRecordsForVehicle(String vehicleId) {
+    return _records.any((record) => record.vehicleId == vehicleId);
+  }
+
+  /// Add a new vehicle
+  Future<void> addVehicle(Vehicle vehicle) async {
+    _vehicles = [..._vehicles, vehicle];
+    await _storageService.saveVehicles(_vehicles);
+    notifyListeners();
+  }
+
+  /// Update an existing vehicle
+  Future<void> updateVehicle(Vehicle updatedVehicle) async {
+    _vehicles = _vehicles.map((v) {
+      if (v.id == updatedVehicle.id) {
+        return updatedVehicle;
+      }
+      return v;
+    }).toList();
+    await _storageService.saveVehicles(_vehicles);
+    notifyListeners();
+  }
+
+  /// Delete a vehicle (soft delete if it has records, hard delete otherwise)
+  Future<void> deleteVehicle(String vehicleId) async {
+    if (_vehicles.length <= 1) {
+      return; // Don't delete the last vehicle
+    }
+
+    final hasRecords = hasRecordsForVehicle(vehicleId);
+    if (hasRecords) {
+      // Soft delete: mark as inactive
+      _vehicles = _vehicles.map((v) {
+        if (v.id == vehicleId) {
+          return v.copyWith(active: false);
+        }
+        return v;
+      }).toList();
+    } else {
+      // Hard delete: remove from list
+      _vehicles = _vehicles.where((v) => v.id != vehicleId).toList();
+    }
+
+    // If the deleted vehicle was selected, switch to the first active vehicle
+    if (_selectedVehicleId == vehicleId) {
+      final activeVehicles = _vehicles.where((v) => v.active).toList();
+      if (activeVehicles.isNotEmpty) {
+        _selectedVehicleId = activeVehicles.first.id;
+        await _storageService.setSelectedVehicle(_selectedVehicleId);
+      }
+    }
+
+    await _storageService.saveVehicles(_vehicles);
+    notifyListeners();
+  }
+
+  /// Set the currently selected vehicle
+  Future<void> setSelectedVehicle(String vehicleId) async {
+    final vehicle = getVehicleById(vehicleId);
+    if (vehicle != null && vehicle.active) {
+      _selectedVehicleId = vehicleId;
+      await _storageService.setSelectedVehicle(vehicleId);
+      notifyListeners();
+    }
+  }
+
+  /// Get the highest odometer reading for a specific vehicle
+  double getHighestOdometerForVehicle(String vehicleId) {
+    final vehicleRecords = getRecordsForVehicle(vehicleId);
+    if (vehicleRecords.isEmpty) {
+      return 0.0;
+    }
+    return vehicleRecords.map((r) => r.odometerKm).reduce(math.max);
   }
 }

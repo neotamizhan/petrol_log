@@ -7,8 +7,10 @@ import 'add_record_screen.dart';
 import 'edit_record_screen.dart';
 import 'settings_screen.dart';
 import 'stats_screen.dart';
+import 'vehicles_screen.dart';
 import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
+import '../widgets/glass_panel.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -23,14 +25,17 @@ class HomeScreen extends StatelessWidget {
       body: SafeArea(
         child: Consumer<RecordsProvider>(
           builder: (context, provider, child) {
-            final stats = provider.getOverallStats();
-            final sorted = provider.records.toList()
+            final selectedVehicleId = provider.selectedVehicleId;
+            final stats = provider.getOverallStats(vehicleId: selectedVehicleId);
+            final sorted = provider.records
+                .where((record) => record.vehicleId == selectedVehicleId)
+                .toList()
               ..sort((a, b) => b.date.compareTo(a.date));
             final latest = sorted.isNotEmpty ? sorted.first : null;
             final lastRefuelDays = latest == null
                 ? null
                 : DateTime.now().difference(latest.date).inDays;
-            final forecast = provider.getRefillForecast();
+            final forecast = provider.getRefillForecast(vehicleId: selectedVehicleId);
 
             return Stack(
               children: [
@@ -127,6 +132,15 @@ class HomeScreen extends StatelessWidget {
                     ),
                     SliverToBoxAdapter(
                       child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                        child: _VehicleSelector(
+                          provider: provider,
+                          isDark: isDark,
+                        ),
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
                         child: _SummaryCard(
                           currency: provider.currency,
@@ -150,7 +164,7 @@ class HomeScreen extends StatelessWidget {
                       const SliverFillRemaining(
                         child: Center(child: CircularProgressIndicator()),
                       )
-                    else if (provider.records.isEmpty)
+                    else if (sorted.isEmpty)
                       SliverFillRemaining(
                         child: _EmptyState(colorScheme: colorScheme),
                       )
@@ -160,7 +174,7 @@ class HomeScreen extends StatelessWidget {
                         sliver: SliverList(
                           delegate: SliverChildBuilderDelegate(
                             (context, index) {
-                              final record = provider.records[index];
+                              final record = sorted[index];
                               final recordStats =
                                   provider.getRecordStats(record);
 
@@ -189,7 +203,7 @@ class HomeScreen extends StatelessWidget {
                                 ),
                               );
                             },
-                            childCount: provider.records.length,
+                            childCount: sorted.length,
                           ),
                         ),
                       ),
@@ -757,6 +771,100 @@ class _ForecastMetric extends StatelessWidget {
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
                 ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VehicleSelector extends StatelessWidget {
+  final RecordsProvider provider;
+  final bool isDark;
+
+  const _VehicleSelector({
+    required this.provider,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final activeVehicles = provider.activeVehicles;
+
+    if (activeVehicles.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return GlassPanel(
+      color: isDark
+          ? AppColors.surfaceDark.withOpacity(0.7)
+          : Colors.white.withOpacity(0.95),
+      border: Border.all(
+        color: isDark ? AppColors.outlineDark : AppColors.outlineLight,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      borderRadius: BorderRadius.circular(16),
+      child: Row(
+        children: [
+          Container(
+            height: 36,
+            width: 36,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.directions_car_rounded,
+              color: AppColors.primary,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: DropdownButton<String>(
+              value: provider.selectedVehicleId,
+              isExpanded: true,
+              underline: const SizedBox.shrink(),
+              items: activeVehicles.map((vehicle) {
+                final displayName = vehicle.plateNumber != null
+                    ? '${vehicle.name} • ${vehicle.plateNumber}'
+                    : vehicle.name;
+                return DropdownMenuItem(
+                  value: vehicle.id,
+                  child: Text(
+                    displayName,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              }).toList(),
+              onChanged: (vehicleId) {
+                if (vehicleId != null) {
+                  provider.setSelectedVehicle(vehicleId);
+                }
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: Icon(
+              Icons.settings_rounded,
+              color: colorScheme.onSurface.withOpacity(0.6),
+              size: 20,
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const VehiclesScreen(),
+                ),
+              );
+            },
+            tooltip: 'Manage Vehicles',
           ),
         ],
       ),

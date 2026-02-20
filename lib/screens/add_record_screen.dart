@@ -23,6 +23,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = TimeOfDay.now();
   String _selectedFuelTypeId = '';
+  String _selectedVehicleId = '';
   bool _isSaving = false;
 
   @override
@@ -35,6 +36,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
       }
       setState(() {
         _selectedFuelTypeId = provider.selectedFuelTypeId;
+        _selectedVehicleId = provider.selectedVehicleId;
       });
     });
   }
@@ -258,6 +260,65 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                           }
                           setState(() {
                             _selectedFuelTypeId = value;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+            Consumer<RecordsProvider>(
+              builder: (context, provider, child) {
+                final activeVehicles = provider.activeVehicles;
+                if (activeVehicles.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+
+                final selectedVehicleId = _selectedVehicleId.isNotEmpty
+                    ? _selectedVehicleId
+                    : provider.selectedVehicleId;
+                final dropdownValue = activeVehicles.any(
+                  (v) => v.id == selectedVehicleId,
+                )
+                    ? selectedVehicleId
+                    : activeVehicles.first.id;
+
+                return _InputCard(
+                  label: 'Vehicle',
+                  icon: Icons.directions_car_rounded,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.surfaceDarkElevated
+                          : AppColors.backgroundLight,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark
+                            ? AppColors.outlineDark
+                            : AppColors.outlineLight,
+                      ),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: dropdownValue,
+                        isExpanded: true,
+                        icon: const Icon(Icons.expand_more_rounded),
+                        items: activeVehicles.map((vehicle) {
+                          final label = vehicle.plateNumber != null
+                              ? '${vehicle.name}  •  ${vehicle.plateNumber}'
+                              : vehicle.name;
+                          return DropdownMenuItem<String>(
+                            value: vehicle.id,
+                            child: Text(label),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() {
+                            _selectedVehicleId = value;
                           });
                         },
                       ),
@@ -522,6 +583,11 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
         _selectedTime.minute,
       );
 
+      final provider = context.read<RecordsProvider>();
+      final vehicleId = _selectedVehicleId.isNotEmpty
+          ? _selectedVehicleId
+          : provider.selectedVehicleId;
+
       final record = FillRecord(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         date: recordDate,
@@ -530,10 +596,10 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
         notes: _notesController.text.trim(),
         fuelTypeId: _selectedFuelTypeId.isNotEmpty
             ? _selectedFuelTypeId
-            : context.read<RecordsProvider>().selectedFuelTypeId,
+            : provider.selectedFuelTypeId,
+        vehicleId: vehicleId,
       );
 
-      final provider = context.read<RecordsProvider>();
       await provider.addRecord(record);
       await provider.setSelectedFuelType(record.fuelTypeId);
 

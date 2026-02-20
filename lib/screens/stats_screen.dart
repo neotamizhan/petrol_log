@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../providers/records_provider.dart';
 import '../models/fill_record.dart';
 import '../models/fuel_type.dart';
+import '../models/vehicle.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_panel.dart';
 import '../utils/currency_utils.dart';
@@ -19,6 +20,7 @@ class StatsScreen extends StatefulWidget {
 
 class _StatsScreenState extends State<StatsScreen> {
   String _selectedFuelTypeFilter = 'all';
+  String _selectedVehicleFilter = 'all';
 
   @override
   Widget build(BuildContext context) {
@@ -45,9 +47,22 @@ class _StatsScreenState extends State<StatsScreen> {
               });
             }
 
+            final vehicleFilterIsValid = _selectedVehicleFilter == 'all' ||
+                provider.vehicles.any((v) => v.id == _selectedVehicleFilter);
+            final selectedVehicleFilterId =
+                vehicleFilterIsValid ? _selectedVehicleFilter : 'all';
+            if (!vehicleFilterIsValid) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                setState(() => _selectedVehicleFilter = 'all');
+              });
+            }
+
             final fuelTypeId =
                 selectedFilterId == 'all' ? null : selectedFilterId;
-            final stats = provider.getOverallStats(fuelTypeId: fuelTypeId);
+            final vehicleId =
+                selectedVehicleFilterId == 'all' ? null : selectedVehicleFilterId;
+            final stats = provider.getOverallStats(fuelTypeId: fuelTypeId, vehicleId: vehicleId);
             final totalRecords = stats['totalRecords'] as int;
             final filterFuelTypes = provider.fuelTypes
                 .where(
@@ -124,6 +139,19 @@ class _StatsScreenState extends State<StatsScreen> {
                       ),
                     ),
                   ),
+                  if (provider.activeVehicles.length > 1)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                        child: _VehicleFilterBar(
+                          selectedId: selectedVehicleFilterId,
+                          vehicles: provider.activeVehicles,
+                          onSelected: (value) {
+                            setState(() => _selectedVehicleFilter = value);
+                          },
+                        ),
+                      ),
+                    ),
                   SliverFillRemaining(
                     child: _EmptyState(colorScheme: colorScheme),
                   ),
@@ -196,6 +224,19 @@ class _StatsScreenState extends State<StatsScreen> {
                     ),
                   ),
                 ),
+                if (provider.activeVehicles.length > 1)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                      child: _VehicleFilterBar(
+                        selectedId: selectedVehicleFilterId,
+                        vehicles: provider.activeVehicles,
+                        onSelected: (value) {
+                          setState(() => _selectedVehicleFilter = value);
+                        },
+                      ),
+                    ),
+                  ),
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -339,6 +380,69 @@ class _FuelTypeFilterBar extends StatelessWidget {
             side: BorderSide(
               color: selected
                   ? AppColors.primary
+                  : theme.brightness == Brightness.dark
+                      ? AppColors.outlineDark.withOpacity(0.6)
+                      : AppColors.outlineLight,
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _VehicleFilterBar extends StatelessWidget {
+  final String selectedId;
+  final List<Vehicle> vehicles;
+  final ValueChanged<String> onSelected;
+
+  const _VehicleFilterBar({
+    required this.selectedId,
+    required this.vehicles,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final options = <Map<String, String>>[
+      const {'id': 'all', 'label': 'All Vehicles'},
+      ...vehicles.map((vehicle) => {
+            'id': vehicle.id,
+            'label': vehicle.name,
+          }),
+    ];
+
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: options.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final option = options[index];
+          final optionId = option['id']!;
+          final selected = selectedId == optionId;
+          return ChoiceChip(
+            label: Text(option['label']!),
+            selected: selected,
+            onSelected: (_) => onSelected(optionId),
+            avatar: selected && optionId != 'all'
+                ? const Icon(Icons.directions_car_rounded, size: 16, color: Colors.white)
+                : null,
+            labelStyle: theme.textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: selected
+                  ? Colors.white
+                  : theme.colorScheme.onSurface.withOpacity(0.75),
+            ),
+            selectedColor: AppColors.accentBlue,
+            backgroundColor: theme.brightness == Brightness.dark
+                ? AppColors.surfaceDarkElevated
+                : Colors.white,
+            side: BorderSide(
+              color: selected
+                  ? AppColors.accentBlue
                   : theme.brightness == Brightness.dark
                       ? AppColors.outlineDark.withOpacity(0.6)
                       : AppColors.outlineLight,

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:petrol_log/models/fill_record.dart';
 import 'package:petrol_log/models/fuel_type.dart';
+import 'package:petrol_log/models/vehicle.dart';
 import 'package:petrol_log/providers/records_provider.dart';
 import 'package:petrol_log/services/storage_service.dart';
 
@@ -11,6 +12,8 @@ class MockStorageService extends Mock implements StorageService {}
 class FakeFillRecord extends Fake implements FillRecord {}
 
 class FakeFuelType extends Fake implements FuelType {}
+
+class FakeVehicle extends Fake implements Vehicle {}
 
 void main() {
   late MockStorageService mockStorageService;
@@ -34,6 +37,8 @@ void main() {
     registerFallbackValue(<FillRecord>[]);
     registerFallbackValue(FakeFuelType());
     registerFallbackValue(<FuelType>[]);
+    registerFallbackValue(FakeVehicle());
+    registerFallbackValue(<Vehicle>[]);
   });
 
   void stubStorage({
@@ -58,6 +63,13 @@ void main() {
     when(() => mockStorageService.setSelectedFuelTypeId(any()))
         .thenAnswer((_) async {});
     when(() => mockStorageService.saveRecords(any())).thenAnswer((_) async {});
+    when(() => mockStorageService.getVehicles()).thenReturn([]);
+    when(() => mockStorageService.getSelectedVehicleId())
+        .thenReturn('default_vehicle');
+    when(() => mockStorageService.saveVehicles(any()))
+        .thenAnswer((_) async {});
+    when(() => mockStorageService.setSelectedVehicle(any()))
+        .thenAnswer((_) async {});
 
     when(() => mockStorageService.addRecord(any())).thenAnswer((_) async {});
     when(() => mockStorageService.updateRecord(any())).thenAnswer((_) async {});
