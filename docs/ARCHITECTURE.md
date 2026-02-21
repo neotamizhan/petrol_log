@@ -74,24 +74,14 @@ C4Container
 
   Container_Boundary(app, "Petrol Log (Flutter App)") {
 
-    Container(ui, "UI Layer", "Flutter Widgets\n(Material 3)",
-      "11 screens + 2 reusable widgets.\nHandles all user interaction\nand data display.")
-
-    Container(state, "State Layer", "Provider / ChangeNotifier",
-      "RecordsProvider: single source of truth\nfor all app state. Exposes reactive\ngetters and analytics methods.")
-
-    Container(services, "Service Layer", "Dart",
-      "StorageService: CRUD over SharedPreferences.\nImportService: CSV parse & map to domain models.")
-
-    Container(models, "Domain Models", "Dart",
-      "FillRecord · FuelType · Vehicle\n· MaintenanceRecord\nImmutable value objects with\nJSON serialization.")
-
-    Container(theme, "Theme & Utils", "Dart",
-      "AppTheme (Material 3 tokens).\nCurrencyUtils (decimal formatting).")
+    Container(ui, "UI Layer", "Flutter Widgets\n(Material 3)", "11 screens + 2 reusable widgets.\nHandles all user interaction\nand data display.")
+    Container(state, "State Layer", "Provider / ChangeNotifier", "RecordsProvider: single source of truth\nfor all app state. Exposes reactive\ngetters and analytics methods.")
+    Container(services, "Service Layer", "Dart", "StorageService: CRUD over SharedPreferences.\nImportService: CSV parse & map to domain models.")
+    Container(models, "Domain Models", "Dart", "FillRecord · FuelType · Vehicle\n· MaintenanceRecord\nImmutable value objects with\nJSON serialization.")
+    Container(theme, "Theme & Utils", "Dart", "AppTheme (Material 3 tokens).\nCurrencyUtils (decimal formatting).")
   }
 
-  ContainerDb(prefs, "SharedPreferences", "Key-Value Store",
-    "On-device persistence.\nStores JSON-encoded lists for\nrecords, vehicles, fuel types,\nmaintenance, and settings.")
+  ContainerDb(prefs, "SharedPreferences", "Key-Value Store", "On-device persistence.\nStores JSON-encoded lists for\nrecords, vehicles, fuel types,\nmaintenance, and settings.")
 
   Rel(driver, ui, "Interacts with")
   Rel(ui, state, "Reads via Consumer<RecordsProvider>\nand calls provider methods")
@@ -115,36 +105,14 @@ C4Component
 
   Container_Boundary(provider, "RecordsProvider (lib/providers/records_provider.dart)") {
 
-    Component(init, "Initializer", "async _loadAll()",
-      "Loads all data from StorageService on startup.\nRuns migrations and sanitization.")
-
-    Component(recordMgmt, "Fill Record Management",
-      "addRecord / updateRecord / deleteRecord",
-      "Maintains sorted list of FillRecords.\nUpdates vehicle odometer on add.")
-
-    Component(fuelMgmt, "Fuel Type Management",
-      "addFuelType / updateFuelType / deleteFuelType",
-      "Manages available fuel types.\nSoft-deletes types that have records.")
-
-    Component(vehicleMgmt, "Vehicle Management",
-      "addVehicle / updateVehicle / deleteVehicle",
-      "Manages vehicle registry.\nSoft-deletes vehicles with existing records.")
-
-    Component(mainMgmt, "Maintenance Management",
-      "addMaintenanceRecord / updateMaintenanceRecord\n/ deleteMaintenanceRecord",
-      "Manages maintenance event log.")
-
-    Component(analytics, "Analytics Engine",
-      "getOverallStats / getRefillForecast\n/ getMaintenanceOverview / getMaintenanceDueStatus",
-      "Pure computation over in-memory state.\nNo I/O. Returns Maps for UI consumption.")
-
-    Component(settings, "Settings Management",
-      "setCurrency / setThemeMode / setFuelPrice",
-      "Persists user preferences.")
-
-    Component(sanitize, "Data Sanitizer",
-      "_sanitizeFuelTypes / _sanitizeVehicles\n/ _normalizeRecordFuelTypes",
-      "Ensures referential integrity after\nloading or migrations.")
+    Component(init, "Initializer", "async _loadAll()", "Loads all data from StorageService on startup.\nRuns migrations and sanitization.")
+    Component(recordMgmt, "Fill Record Management", "addRecord / updateRecord / deleteRecord", "Maintains sorted list of FillRecords.\nUpdates vehicle odometer on add.")
+    Component(fuelMgmt, "Fuel Type Management", "addFuelType / updateFuelType / deleteFuelType", "Manages available fuel types.\nSoft-deletes types that have records.")
+    Component(vehicleMgmt, "Vehicle Management", "addVehicle / updateVehicle / deleteVehicle", "Manages vehicle registry.\nSoft-deletes vehicles with existing records.")
+    Component(mainMgmt, "Maintenance Management", "addMaintenanceRecord / updateMaintenanceRecord\n/ deleteMaintenanceRecord", "Manages maintenance event log.")
+    Component(analytics, "Analytics Engine", "getOverallStats / getRefillForecast\n/ getMaintenanceOverview / getMaintenanceDueStatus", "Pure computation over in-memory state.\nNo I/O. Returns Maps for UI consumption.")
+    Component(settings, "Settings Management", "setCurrency / setThemeMode / setFuelPrice", "Persists user preferences.")
+    Component(sanitize, "Data Sanitizer", "_sanitizeFuelTypes / _sanitizeVehicles\n/ _normalizeRecordFuelTypes", "Ensures referential integrity after\nloading or migrations.")
   }
 
   Rel(init, recordMgmt, "Populates")
@@ -165,17 +133,9 @@ C4Component
 
   Container_Boundary(services, "Service Layer (lib/services/)") {
 
-    Component(storage, "StorageService",
-      "storage_service.dart",
-      "Wraps SharedPreferences.\nExposes typed CRUD for each entity.\nContains migration logic for legacy data.")
-
-    Component(importer, "ImportService",
-      "import_service.dart",
-      "Presents file picker dialog.\nParses CSV with flexible date formats.\nReturns ImportResult (records + status message).")
-
-    Component(migration, "Migration Logic",
-      "Inside StorageService",
-      "_migrateLegacyFuelSettings(): converts\nold pricePerLiter key → FuelType list.\n_migrateToVehicleSupport(): creates\ndefault vehicle for pre-vehicle data.")
+    Component(storage, "StorageService", "storage_service.dart", "Wraps SharedPreferences.\nExposes typed CRUD for each entity.\nContains migration logic for legacy data.")
+    Component(importer, "ImportService", "import_service.dart", "Presents file picker dialog.\nParses CSV with flexible date formats.\nReturns ImportResult (records + status message).")
+    Component(migration, "Migration Logic", "Inside StorageService", "_migrateLegacyFuelSettings(): converts\nold pricePerLiter key -> FuelType list.\n_migrateToVehicleSupport(): creates\ndefault vehicle for pre-vehicle data.")
   }
 ```
 
@@ -187,38 +147,17 @@ C4Component
 
   Container_Boundary(ui, "UI Layer (lib/screens/)") {
 
-    Component(splash, "SplashScreen", "splash_screen.dart",
-      "Animated entry screen.\n1.7 s delay then navigate to Home.")
-
-    Component(home, "HomeScreen", "home_screen.dart",
-      "4-tab shell:\n• Dashboard (stats + forecast + maintenance alerts)\n• Vehicles\n• Stats\n• Settings")
-
-    Component(addRecord, "AddRecordScreen", "add_record_screen.dart",
-      "Form: date, odometer, fuel type,\ncost, notes. Auto-calculates volume.")
-
-    Component(editRecord, "EditRecordScreen", "edit_record_screen.dart",
-      "Pre-filled form. Adds Delete action.")
-
-    Component(vehicles, "VehiclesScreen", "vehicles_screen.dart",
-      "List of vehicles with status indicators.")
-
-    Component(addVehicle, "AddVehicleScreen", "add_vehicle_screen.dart",
-      "Form: name, make, model, year,\nplate, starting odometer.")
-
-    Component(editVehicle, "EditVehicleScreen", "edit_vehicle_screen.dart",
-      "Pre-filled form. Adds Delete action.")
-
-    Component(maintenance, "MaintenanceScreen", "maintenance_screen.dart",
-      "Service history per vehicle.\nStatus badges: Overdue / Due Soon / On Track.")
-
-    Component(addMaint, "AddMaintenanceScreen", "add_maintenance_screen.dart",
-      "Form: service type, date, odometer,\ncost, next-due targets, notes.")
-
-    Component(stats, "StatsScreen", "stats_screen.dart",
-      "Analytics dashboard.\nFilters by vehicle and fuel type.")
-
-    Component(settings, "SettingsScreen", "settings_screen.dart",
-      "Fuel price, currency, theme,\nfuel type management, CSV import.")
+    Component(splash, "SplashScreen", "splash_screen.dart", "Animated entry screen.\n1.7 s delay then navigate to Home.")
+    Component(home, "HomeScreen", "home_screen.dart", "4-tab shell:\n- Dashboard (stats + forecast + maintenance alerts)\n- Vehicles\n- Stats\n- Settings")
+    Component(addRecord, "AddRecordScreen", "add_record_screen.dart", "Form: date, odometer, fuel type,\ncost, notes. Auto-calculates volume.")
+    Component(editRecord, "EditRecordScreen", "edit_record_screen.dart", "Pre-filled form. Adds Delete action.")
+    Component(vehicles, "VehiclesScreen", "vehicles_screen.dart", "List of vehicles with status indicators.")
+    Component(addVehicle, "AddVehicleScreen", "add_vehicle_screen.dart", "Form: name, make, model, year,\nplate, starting odometer.")
+    Component(editVehicle, "EditVehicleScreen", "edit_vehicle_screen.dart", "Pre-filled form. Adds Delete action.")
+    Component(maintenance, "MaintenanceScreen", "maintenance_screen.dart", "Service history per vehicle.\nStatus badges: Overdue / Due Soon / On Track.")
+    Component(addMaint, "AddMaintenanceScreen", "add_maintenance_screen.dart", "Form: service type, date, odometer,\ncost, next-due targets, notes.")
+    Component(stats, "StatsScreen", "stats_screen.dart", "Analytics dashboard.\nFilters by vehicle and fuel type.")
+    Component(settings, "SettingsScreen", "settings_screen.dart", "Fuel price, currency, theme,\nfuel type management, CSV import.")
   }
 ```
 
@@ -351,7 +290,7 @@ sequenceDiagram
   Provider->>Provider: _sanitizeFuelTypes()
   Provider->>Provider: _sanitizeVehicles()
   Provider->>Provider: _normalizeRecordFuelTypes()
-  Provider->>Provider: _isLoading = false; notifyListeners()
+  Provider->>Provider: Set _isLoading = false and call notifyListeners()
   Provider-->>App: UI renders with data
 ```
 
@@ -587,4 +526,7 @@ petrol_log/
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-02-21 | 1.0.0+3 | Fixed Mermaid syntax in “App Startup Sequence” by replacing a semicolon-delimited action label with parser-safe wording. |
+| 2026-02-21 | 1.0.0+3 | Fixed Mermaid C4 syntax in §4b and §4c by converting multiline `Component(...)` declarations to single-line statements and normalizing special symbols for parser compatibility. |
+| 2026-02-21 | 1.0.0+3 | Fixed Mermaid C4 container/component syntax by putting `Container(...)`, `ContainerDb(...)`, and `Component(...)` definitions on single lines for parser compatibility. |
 | 2026-02-21 | 1.0.0+3 | Initial architecture document created. Covers C4 L1–L3, ERD, data flow, navigation, persistence, analytics, platform matrix. |
