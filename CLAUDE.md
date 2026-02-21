@@ -278,8 +278,37 @@ Before deploying any solution:
 - Cloud Cost Optimization: https://www.cloudcostoptimization.com/
 - OWASP Top 10: https://owasp.org/www-project-top-ten/
 
+## Documentation Maintenance
+
+The technical architecture document for this project lives at `docs/ARCHITECTURE.md`. Claude must keep it current as part of every significant change.
+
+### What counts as a significant change
+
+- Adding, removing, or renaming a model, field, or storage key
+- Adding, removing, or renaming a screen or navigation route
+- Adding or changing a provider method or analytics/forecasting algorithm
+- Adding or changing a service, storage key, or migration
+- Adding, removing, or upgrading a dependency
+- Adding platform support or changing a build command
+- Any structural directory reorganisation
+
+### How to update the documentation
+
+When making a significant change:
+
+1. Complete the code change first.
+2. Open `docs/ARCHITECTURE.md` and update every affected section (refer to the trigger table in `AGENTS.md` for guidance on which sections to touch).
+3. Update the `> **Last updated:**` date at the top of the file to today's date.
+4. Append a row to the `## Changelog` table at the bottom: `| YYYY-MM-DD | version | one-line summary |`.
+5. Include the documentation update in the **same commit** as the code change — never let documentation drift behind the code.
+
+### Cost implication
+
+Keeping `docs/ARCHITECTURE.md` accurate eliminates the need for future Claude sessions to re-explore the codebase from scratch, reducing token consumption and interaction cost. Treat documentation updates as zero-overhead work included in every feature or fix.
+
 ## Version History
 - v1.0 (2025-02-08): Initial version
+- v1.1 (2026-02-21): Added Documentation Maintenance section
 
 ---
 

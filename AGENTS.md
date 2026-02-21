@@ -34,3 +34,26 @@ PRs should include:
 - linked issue/reference when applicable
 - screenshots for UI changes
 - validation notes for `flutter test` and `flutter analyze`
+
+## Documentation Maintenance
+
+The technical architecture document lives at `docs/ARCHITECTURE.md`. It must be kept current with the codebase. Update it whenever a change falls into one of these categories:
+
+| Trigger | Section(s) to update |
+|---|---|
+| New model added or existing model fields changed | §5 Data Models (ERD + field summary + storage keys table) |
+| New screen added or navigation flow changed | §7 Screen Navigation Map + §4c Component Diagram (UI) |
+| New provider method or analytics logic changed | §4a Component Diagram (State) + §9 Analytics & Forecasting |
+| New service or StorageService key added | §4b Component Diagram (Service) + §8 Persistence Layer |
+| New dependency added or removed | §11 Dependency Inventory |
+| New platform supported or build command changed | §10 Platform Support & Build Matrix |
+| Migration added | §8 Persistence Layer (Migration Strategy table) |
+| Any structural refactor | §13 Directory Reference |
+
+**Procedure:**
+1. Make your code changes.
+2. Open `docs/ARCHITECTURE.md`.
+3. Update all affected sections listed above.
+4. Update the `Last updated` date at the top of the file.
+5. Add a row to the `## Changelog` table at the bottom with today's date, app version, and a one-line description.
+6. Include the documentation update in the same commit as the code change.
