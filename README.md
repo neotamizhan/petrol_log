@@ -24,6 +24,10 @@ The app stores your records locally, calculates analytics automatically, and pre
 - Smart history cards
 - Shows efficiency, distance since previous fill, interval days, and cost per record.
 
+- Vehicle service & maintenance management
+- Log maintenance events (oil change, brakes, tire work, insurance, and more) per vehicle.
+- Set next due odometer/date and track `on_track`, `due_soon`, and `overdue` service states.
+
 - Refuel Radar (predictive)
 - Forecasts likely next refill date, expected cycle length, projected odometer, and expected spend.
 - Includes confidence and urgency states (`on_track`, `soon`, `overdue`).
@@ -48,7 +52,7 @@ The app stores your records locally, calculates analytics automatically, and pre
 
 ## Project Structure
 
-- `lib/models/` data models (`FillRecord`)
+- `lib/models/` data models (`FillRecord`, `MaintenanceRecord`, `Vehicle`)
 - `lib/providers/` app state and analytics logic (`RecordsProvider`)
 - `lib/screens/` user-facing flows (home, add/edit, stats, settings)
 - `lib/services/` storage and import services

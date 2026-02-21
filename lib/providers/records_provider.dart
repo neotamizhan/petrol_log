@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../models/fill_record.dart';
 import '../models/fuel_type.dart';
+import '../models/maintenance_record.dart';
 import '../models/vehicle.dart';
 import '../services/storage_service.dart';
 
@@ -15,6 +16,7 @@ class RecordsProvider with ChangeNotifier {
   String _selectedFuelTypeId = FuelType.defaultId;
   List<Vehicle> _vehicles = [];
   String _selectedVehicleId = 'default_vehicle';
+  List<MaintenanceRecord> _maintenanceRecords = [];
   String _currency = StorageService.defaultCurrency;
   ThemeMode _themeMode = ThemeMode.system;
   bool _isLoading = true;
@@ -30,6 +32,8 @@ class RecordsProvider with ChangeNotifier {
   List<Vehicle> get activeVehicles =>
       _vehicles.where((vehicle) => vehicle.active).toList();
   String get selectedVehicleId => _resolveSelectedVehicleId(_selectedVehicleId);
+  List<MaintenanceRecord> get maintenanceRecords =>
+      List<MaintenanceRecord>.unmodifiable(_maintenanceRecords);
 
   FuelType? get selectedFuelType {
     for (final fuelType in _fuelTypes) {
@@ -126,6 +130,7 @@ class RecordsProvider with ChangeNotifier {
       _storageService.getSelectedVehicleId(),
     );
     _records = _normalizeRecordFuelTypes(_storageService.getRecords());
+    _maintenanceRecords = _storageService.getMaintenanceRecords();
     _currency = _storageService.getCurrency();
     _themeMode = _parseThemeMode(_storageService.getThemeMode());
 
@@ -136,6 +141,7 @@ class RecordsProvider with ChangeNotifier {
       await _storageService.setSelectedVehicle(_selectedVehicleId);
     }
     await _storageService.saveRecords(_records);
+    await _storageService.saveMaintenanceRecords(_maintenanceRecords);
 
     _isLoading = false;
     notifyListeners();
@@ -749,6 +755,217 @@ class RecordsProvider with ChangeNotifier {
     return (standardDeviation / mean).clamp(0.0, 1.2);
   }
 
+  List<MaintenanceRecord> getMaintenanceRecordsForVehicle(String vehicleId) {
+    final records = _maintenanceRecords
+        .where((record) => record.vehicleId == vehicleId)
+        .toList();
+    records.sort((a, b) {
+      final byServiceDate = b.serviceDate.compareTo(a.serviceDate);
+      if (byServiceDate != 0) {
+        return byServiceDate;
+      }
+      return b.createdAt.compareTo(a.createdAt);
+    });
+    return records;
+  }
+
+  bool hasMaintenanceRecordsForVehicle(String vehicleId) {
+    return _maintenanceRecords.any((record) => record.vehicleId == vehicleId);
+  }
+
+  Map<String, dynamic> getMaintenanceDueStatus(
+    MaintenanceRecord record, {
+    DateTime? now,
+  }) {
+    final reference = now ?? DateTime.now();
+    final today = DateTime(reference.year, reference.month, reference.day);
+    final currentOdometer =
+        getVehicleById(record.vehicleId)?.currentOdometer ?? record.odometerKm;
+
+    double? kmRemaining;
+    bool overdueByKm = false;
+    bool dueSoonByKm = false;
+    if (record.nextDueOdometerKm != null) {
+      kmRemaining = record.nextDueOdometerKm! - currentOdometer;
+      overdueByKm = kmRemaining <= 0;
+      dueSoonByKm = kmRemaining > 0 && kmRemaining <= 500;
+    }
+
+    int? daysRemaining;
+    bool overdueByDate = false;
+    bool dueSoonByDate = false;
+    if (record.nextDueDate != null) {
+      final dueDateOnly = DateTime(
+        record.nextDueDate!.year,
+        record.nextDueDate!.month,
+        record.nextDueDate!.day,
+      );
+      daysRemaining = dueDateOnly.difference(today).inDays;
+      overdueByDate = daysRemaining < 0;
+      dueSoonByDate = daysRemaining >= 0 && daysRemaining <= 14;
+    }
+
+    final overdue = overdueByKm || overdueByDate;
+    final dueSoon = !overdue && (dueSoonByKm || dueSoonByDate);
+    final status = !record.hasDueTarget
+        ? 'completed'
+        : overdue
+            ? 'overdue'
+            : dueSoon
+                ? 'due_soon'
+                : 'on_track';
+
+    return {
+      'status': status,
+      'currentOdometerKm': currentOdometer,
+      'kmRemaining': kmRemaining,
+      'daysRemaining': daysRemaining,
+      'isOverdue': overdue,
+      'isDueSoon': dueSoon,
+      'overdueByKm': overdueByKm,
+      'overdueByDate': overdueByDate,
+      'dueSoonByKm': dueSoonByKm,
+      'dueSoonByDate': dueSoonByDate,
+      'hasDueTarget': record.hasDueTarget,
+    };
+  }
+
+  List<MaintenanceRecord> _latestScheduledMaintenance(
+      List<MaintenanceRecord> records) {
+    final sorted = List<MaintenanceRecord>.from(records)
+      ..sort((a, b) {
+        final byServiceDate = b.serviceDate.compareTo(a.serviceDate);
+        if (byServiceDate != 0) {
+          return byServiceDate;
+        }
+        return b.createdAt.compareTo(a.createdAt);
+      });
+
+    final seenScheduleKeys = <String>{};
+    final latest = <MaintenanceRecord>[];
+
+    for (final record in sorted) {
+      if (!record.hasDueTarget) {
+        continue;
+      }
+      if (seenScheduleKeys.add(record.scheduleKey)) {
+        latest.add(record);
+      }
+    }
+
+    return latest;
+  }
+
+  Map<String, dynamic> getMaintenanceOverview({
+    String? vehicleId,
+    DateTime? now,
+  }) {
+    final filtered = (vehicleId == null || vehicleId == 'all')
+        ? List<MaintenanceRecord>.from(_maintenanceRecords)
+        : getMaintenanceRecordsForVehicle(vehicleId);
+
+    if (filtered.isEmpty) {
+      return {
+        'totalRecords': 0,
+        'scheduledItems': 0,
+        'overdueCount': 0,
+        'dueSoonCount': 0,
+        'onTrackCount': 0,
+        'totalCost': 0.0,
+        'latestServiceDate': null,
+        'dueItems': <Map<String, dynamic>>[],
+        'needsAttention': false,
+        'vehicleFilter': vehicleId,
+      };
+    }
+
+    final sortedHistory = List<MaintenanceRecord>.from(filtered)
+      ..sort((a, b) => b.serviceDate.compareTo(a.serviceDate));
+    final totalCost =
+        filtered.fold<double>(0, (sum, record) => sum + record.cost);
+    final latestServiceDate = sortedHistory.first.serviceDate;
+
+    final latestSchedules = _latestScheduledMaintenance(filtered);
+    final scheduleSnapshots = latestSchedules.map((record) {
+      final dueStatus = getMaintenanceDueStatus(record, now: now);
+      return {
+        'record': record,
+        'dueStatus': dueStatus,
+      };
+    }).toList();
+
+    final overdueItems = scheduleSnapshots
+        .where((item) =>
+            (item['dueStatus'] as Map<String, dynamic>)['status'] == 'overdue')
+        .toList();
+    final dueSoonItems = scheduleSnapshots
+        .where((item) =>
+            (item['dueStatus'] as Map<String, dynamic>)['status'] == 'due_soon')
+        .toList();
+    final onTrackCount = scheduleSnapshots
+        .where((item) =>
+            (item['dueStatus'] as Map<String, dynamic>)['status'] == 'on_track')
+        .length;
+
+    final dueItems = <Map<String, dynamic>>[
+      ...overdueItems,
+      ...dueSoonItems,
+    ];
+
+    return {
+      'totalRecords': filtered.length,
+      'scheduledItems': latestSchedules.length,
+      'overdueCount': overdueItems.length,
+      'dueSoonCount': dueSoonItems.length,
+      'onTrackCount': onTrackCount,
+      'totalCost': totalCost,
+      'latestServiceDate': latestServiceDate,
+      'dueItems': dueItems,
+      'needsAttention': dueItems.isNotEmpty,
+      'vehicleFilter': vehicleId,
+    };
+  }
+
+  Future<void> addMaintenanceRecord(MaintenanceRecord record) async {
+    await _storageService.addMaintenanceRecord(record);
+    _maintenanceRecords = _storageService.getMaintenanceRecords();
+
+    final vehicle = getVehicleById(record.vehicleId);
+    if (vehicle != null && record.odometerKm > vehicle.currentOdometer) {
+      final updatedVehicle =
+          vehicle.copyWith(currentOdometer: record.odometerKm);
+      _vehicles = _vehicles
+          .map((v) => v.id == vehicle.id ? updatedVehicle : v)
+          .toList();
+      await _storageService.saveVehicles(_vehicles);
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> updateMaintenanceRecord(MaintenanceRecord record) async {
+    await _storageService.updateMaintenanceRecord(record);
+    _maintenanceRecords = _storageService.getMaintenanceRecords();
+
+    final vehicle = getVehicleById(record.vehicleId);
+    if (vehicle != null && record.odometerKm > vehicle.currentOdometer) {
+      final updatedVehicle =
+          vehicle.copyWith(currentOdometer: record.odometerKm);
+      _vehicles = _vehicles
+          .map((v) => v.id == vehicle.id ? updatedVehicle : v)
+          .toList();
+      await _storageService.saveVehicles(_vehicles);
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> deleteMaintenanceRecord(String id) async {
+    await _storageService.deleteMaintenanceRecord(id);
+    _maintenanceRecords = _storageService.getMaintenanceRecords();
+    notifyListeners();
+  }
+
   // Vehicle Management Methods
 
   /// Get a vehicle by ID
@@ -768,7 +985,9 @@ class RecordsProvider with ChangeNotifier {
 
   /// Check if a vehicle has any associated records
   bool hasRecordsForVehicle(String vehicleId) {
-    return _records.any((record) => record.vehicleId == vehicleId);
+    final hasFillRecords =
+        _records.any((record) => record.vehicleId == vehicleId);
+    return hasFillRecords || hasMaintenanceRecordsForVehicle(vehicleId);
   }
 
   /// Add a new vehicle
@@ -842,10 +1061,15 @@ class RecordsProvider with ChangeNotifier {
 
   /// Get the highest odometer reading for a specific vehicle
   double getHighestOdometerForVehicle(String vehicleId) {
-    final vehicleRecords = getRecordsForVehicle(vehicleId);
-    if (vehicleRecords.isEmpty) {
+    final fillReadings =
+        getRecordsForVehicle(vehicleId).map((record) => record.odometerKm);
+    final maintenanceReadings = getMaintenanceRecordsForVehicle(vehicleId)
+        .map((record) => record.odometerKm);
+    final allReadings = [...fillReadings, ...maintenanceReadings];
+
+    if (allReadings.isEmpty) {
       return 0.0;
     }
-    return vehicleRecords.map((r) => r.odometerKm).reduce(math.max);
+    return allReadings.reduce(math.max);
   }
 }

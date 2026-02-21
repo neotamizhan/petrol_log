@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:petrol_log/models/fill_record.dart';
 import 'package:petrol_log/models/fuel_type.dart';
+import 'package:petrol_log/models/maintenance_record.dart';
 import 'package:petrol_log/models/vehicle.dart';
 import 'package:petrol_log/providers/records_provider.dart';
 import 'package:petrol_log/services/storage_service.dart';
@@ -14,6 +15,8 @@ class FakeFillRecord extends Fake implements FillRecord {}
 class FakeFuelType extends Fake implements FuelType {}
 
 class FakeVehicle extends Fake implements Vehicle {}
+
+class FakeMaintenanceRecord extends Fake implements MaintenanceRecord {}
 
 void main() {
   late MockStorageService mockStorageService;
@@ -39,16 +42,23 @@ void main() {
     registerFallbackValue(<FuelType>[]);
     registerFallbackValue(FakeVehicle());
     registerFallbackValue(<Vehicle>[]);
+    registerFallbackValue(FakeMaintenanceRecord());
+    registerFallbackValue(<MaintenanceRecord>[]);
   });
 
   void stubStorage({
     List<FillRecord>? records,
     List<FuelType>? fuelTypes,
+    List<Vehicle>? vehicles,
+    List<MaintenanceRecord>? maintenanceRecords,
     String selectedFuelTypeId = 'regular',
     String currency = '₹',
   }) {
     final resolvedRecords = records ?? <FillRecord>[];
     final resolvedFuelTypes = fuelTypes ?? const [regularFuelType];
+    final resolvedVehicles = vehicles ?? <Vehicle>[];
+    final resolvedMaintenanceRecords =
+        maintenanceRecords ?? <MaintenanceRecord>[];
 
     when(() => mockStorageService.init()).thenAnswer((_) async {});
     when(() => mockStorageService.getThemeMode()).thenReturn('system');
@@ -63,17 +73,28 @@ void main() {
     when(() => mockStorageService.setSelectedFuelTypeId(any()))
         .thenAnswer((_) async {});
     when(() => mockStorageService.saveRecords(any())).thenAnswer((_) async {});
-    when(() => mockStorageService.getVehicles()).thenReturn([]);
-    when(() => mockStorageService.getSelectedVehicleId())
-        .thenReturn('default_vehicle');
-    when(() => mockStorageService.saveVehicles(any()))
-        .thenAnswer((_) async {});
+    when(() => mockStorageService.getVehicles()).thenReturn(resolvedVehicles);
+    when(() => mockStorageService.getSelectedVehicleId()).thenReturn(
+        resolvedVehicles.isNotEmpty
+            ? resolvedVehicles.first.id
+            : 'default_vehicle');
+    when(() => mockStorageService.saveVehicles(any())).thenAnswer((_) async {});
     when(() => mockStorageService.setSelectedVehicle(any()))
+        .thenAnswer((_) async {});
+    when(() => mockStorageService.getMaintenanceRecords())
+        .thenReturn(resolvedMaintenanceRecords);
+    when(() => mockStorageService.saveMaintenanceRecords(any()))
         .thenAnswer((_) async {});
 
     when(() => mockStorageService.addRecord(any())).thenAnswer((_) async {});
     when(() => mockStorageService.updateRecord(any())).thenAnswer((_) async {});
     when(() => mockStorageService.deleteRecord(any())).thenAnswer((_) async {});
+    when(() => mockStorageService.addMaintenanceRecord(any()))
+        .thenAnswer((_) async {});
+    when(() => mockStorageService.updateMaintenanceRecord(any()))
+        .thenAnswer((_) async {});
+    when(() => mockStorageService.deleteMaintenanceRecord(any()))
+        .thenAnswer((_) async {});
 
     when(() => mockStorageService.setFuelPrice(any())).thenAnswer((_) async {});
     when(() => mockStorageService.setCurrency(any())).thenAnswer((_) async {});
@@ -278,6 +299,76 @@ void main() {
 
       verify(() => mockStorageService.setThemeMode('dark')).called(1);
       expect(provider.themeMode, ThemeMode.dark);
+    });
+
+    test('maintenance overview marks overdue schedule using odometer and date',
+        () async {
+      final vehicle = Vehicle(
+        id: 'v1',
+        name: 'Civic',
+        currentOdometer: 15500,
+        createdAt: DateTime(2024, 1, 1),
+      );
+      final maintenance = MaintenanceRecord(
+        id: 'm1',
+        vehicleId: 'v1',
+        serviceType: 'Oil Change',
+        category: 'oil_change',
+        serviceDate: DateTime(2024, 1, 1),
+        odometerKm: 12000,
+        cost: 1500,
+        nextDueOdometerKm: 15000,
+        nextDueDate: DateTime(2024, 2, 1),
+        createdAt: DateTime(2024, 1, 1),
+      );
+      stubStorage(
+        vehicles: [vehicle],
+        maintenanceRecords: [maintenance],
+      );
+
+      provider = RecordsProvider(mockStorageService);
+      await provider.init();
+
+      final overview = provider.getMaintenanceOverview(
+        vehicleId: 'v1',
+        now: DateTime(2024, 3, 1),
+      );
+
+      expect(overview['overdueCount'], 1);
+      expect(overview['dueSoonCount'], 0);
+      expect(overview['scheduledItems'], 1);
+      expect(overview['needsAttention'], isTrue);
+    });
+
+    test('addMaintenanceRecord updates vehicle odometer when higher', () async {
+      final vehicle = Vehicle(
+        id: 'v1',
+        name: 'Civic',
+        currentOdometer: 10000,
+        createdAt: DateTime(2024, 1, 1),
+      );
+      final maintenance = MaintenanceRecord(
+        id: 'm1',
+        vehicleId: 'v1',
+        serviceType: 'Brake Service',
+        category: 'brake',
+        serviceDate: DateTime(2024, 1, 10),
+        odometerKm: 12000,
+        cost: 2000,
+        createdAt: DateTime(2024, 1, 10),
+      );
+      stubStorage(
+        vehicles: [vehicle],
+        maintenanceRecords: [maintenance],
+      );
+
+      provider = RecordsProvider(mockStorageService);
+      await provider.init();
+
+      await provider.addMaintenanceRecord(maintenance);
+
+      verify(() => mockStorageService.saveVehicles(any())).called(2);
+      expect(provider.getVehicleById('v1')?.currentOdometer, 12000);
     });
   });
 }

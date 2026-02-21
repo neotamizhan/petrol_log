@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../models/maintenance_record.dart';
 import '../providers/records_provider.dart';
 import '../widgets/record_card.dart';
 import 'add_record_screen.dart';
 import 'edit_record_screen.dart';
+import 'maintenance_screen.dart';
 import 'settings_screen.dart';
 import 'stats_screen.dart';
 import 'vehicles_screen.dart';
@@ -38,6 +40,8 @@ class HomeScreen extends StatelessWidget {
                 : DateTime.now().difference(latest.date).inDays;
             final forecast =
                 provider.getRefillForecast(vehicleId: selectedVehicleId);
+            final maintenanceOverview =
+                provider.getMaintenanceOverview(vehicleId: selectedVehicleId);
 
             return Stack(
               children: [
@@ -122,6 +126,12 @@ class HomeScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(width: 8),
                                   _IconBubble(
+                                    icon: Icons.build_rounded,
+                                    onTap: () =>
+                                        _navigateToMaintenance(context),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _IconBubble(
                                     icon: Icons.settings_rounded,
                                     onTap: () => _navigateToSettings(context),
                                   ),
@@ -159,6 +169,15 @@ class HomeScreen extends StatelessWidget {
                         child: _RefillRadarCard(
                           forecast: forecast,
                           currency: provider.currency,
+                        ),
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+                        child: _MaintenanceDigestCard(
+                          overview: maintenanceOverview,
+                          onTapManage: () => _navigateToMaintenance(context),
                         ),
                       ),
                     ),
@@ -254,6 +273,17 @@ class HomeScreen extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const StatsScreen(),
+      ),
+    );
+  }
+
+  void _navigateToMaintenance(BuildContext context) {
+    final provider = context.read<RecordsProvider>();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => MaintenanceScreen(
+          initialVehicleId: provider.selectedVehicleId,
+        ),
       ),
     );
   }
@@ -736,6 +766,172 @@ class _RefillRadarCard extends StatelessWidget {
       return const Color(0xFFFFF2CC);
     }
     return const Color(0xFFFEE2E2);
+  }
+}
+
+class _MaintenanceDigestCard extends StatelessWidget {
+  final Map<String, dynamic> overview;
+  final VoidCallback onTapManage;
+
+  const _MaintenanceDigestCard({
+    required this.overview,
+    required this.onTapManage,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final totalRecords = overview['totalRecords'] as int;
+    final overdueCount = overview['overdueCount'] as int;
+    final dueSoonCount = overview['dueSoonCount'] as int;
+    final scheduledItems = overview['scheduledItems'] as int;
+    final dueItems =
+        (overview['dueItems'] as List<dynamic>).cast<Map<String, dynamic>>();
+    final needsAttention = overdueCount > 0 || dueSoonCount > 0;
+
+    final title = totalRecords == 0
+        ? 'Maintenance'
+        : needsAttention
+            ? 'Maintenance Alert'
+            : 'Maintenance On Track';
+    final subtitle = totalRecords == 0
+        ? 'Track services like oil change, brake jobs, and inspections.'
+        : needsAttention
+            ? _attentionText(dueItems)
+            : 'No urgent service tasks for now.';
+
+    return InkWell(
+      onTap: onTapManage,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.surfaceDark : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: needsAttention
+                ? (overdueCount > 0
+                    ? const Color(0xFFEF4444).withOpacity(0.45)
+                    : AppColors.accentAmber.withOpacity(0.45))
+                : (isDark ? AppColors.outlineDark : AppColors.outlineLight),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  height: 40,
+                  width: 40,
+                  decoration: BoxDecoration(
+                    color: (needsAttention
+                            ? (overdueCount > 0
+                                ? const Color(0xFFEF4444)
+                                : AppColors.accentAmber)
+                            : AppColors.primary)
+                        .withOpacity(0.16),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.build_rounded,
+                    color: needsAttention
+                        ? (overdueCount > 0
+                            ? const Color(0xFFEF4444)
+                            : AppColors.accentAmber)
+                        : AppColors.primary,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        subtitle,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurface.withOpacity(0.65),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _MaintenanceChip(
+                  label: 'Records',
+                  value: totalRecords.toString(),
+                ),
+                _MaintenanceChip(
+                  label: 'Scheduled',
+                  value: scheduledItems.toString(),
+                ),
+                _MaintenanceChip(
+                  label: 'Overdue',
+                  value: overdueCount.toString(),
+                ),
+                _MaintenanceChip(
+                  label: 'Due Soon',
+                  value: dueSoonCount.toString(),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _attentionText(List<Map<String, dynamic>> dueItems) {
+    if (dueItems.isEmpty) {
+      return 'Upcoming services detected.';
+    }
+    final first = dueItems.first['record'] as MaintenanceRecord;
+    final remaining = dueItems.length - 1;
+    if (remaining <= 0) {
+      return '${first.serviceType} needs attention.';
+    }
+    return '${first.serviceType} and $remaining more need attention.';
+  }
+}
+
+class _MaintenanceChip extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _MaintenanceChip({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '$label: $value',
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+      ),
+    );
   }
 }
 

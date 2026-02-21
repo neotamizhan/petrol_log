@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/fill_record.dart';
 import '../models/fuel_type.dart';
+import '../models/maintenance_record.dart';
 import '../models/vehicle.dart';
 
 class StorageService {
@@ -15,6 +16,7 @@ class StorageService {
   static const String _selectedFuelTypeKey = 'selected_fuel_type_id';
   static const String _vehiclesKey = 'vehicles';
   static const String _selectedVehicleKey = 'selected_vehicle_id';
+  static const String _maintenanceRecordsKey = 'maintenance_records';
 
   static const double defaultFuelPrice = 100.0;
   static const String defaultCurrency = '₹';
@@ -120,6 +122,48 @@ class StorageService {
       records[index] = updatedRecord;
       await saveRecords(records);
     }
+  }
+
+  /// Get all stored maintenance records, sorted by service date (newest first)
+  List<MaintenanceRecord> getMaintenanceRecords() {
+    final jsonString = _prefs.getString(_maintenanceRecordsKey);
+    if (jsonString == null || jsonString.isEmpty) {
+      return [];
+    }
+
+    final records = MaintenanceRecord.decodeRecords(jsonString);
+    records.sort((a, b) => b.serviceDate.compareTo(a.serviceDate));
+    return records;
+  }
+
+  /// Save all maintenance records
+  Future<void> saveMaintenanceRecords(List<MaintenanceRecord> records) async {
+    final jsonString = MaintenanceRecord.encodeRecords(records);
+    await _prefs.setString(_maintenanceRecordsKey, jsonString);
+  }
+
+  /// Add a maintenance record
+  Future<void> addMaintenanceRecord(MaintenanceRecord record) async {
+    final records = getMaintenanceRecords();
+    records.add(record);
+    await saveMaintenanceRecords(records);
+  }
+
+  /// Update an existing maintenance record
+  Future<void> updateMaintenanceRecord(MaintenanceRecord updatedRecord) async {
+    final records = getMaintenanceRecords();
+    final index = records.indexWhere((record) => record.id == updatedRecord.id);
+    if (index != -1) {
+      records[index] = updatedRecord;
+      await saveMaintenanceRecords(records);
+    }
+  }
+
+  /// Delete a maintenance record by ID
+  Future<void> deleteMaintenanceRecord(String id) async {
+    final records = getMaintenanceRecords();
+    records.removeWhere((record) => record.id == id);
+    await saveMaintenanceRecords(records);
   }
 
   /// Get all configured fuel types
@@ -283,7 +327,8 @@ class StorageService {
       final records = getRecords();
 
       // Find the latest odometer reading from existing records
-      final latestOdometer = records.isNotEmpty ? records.first.odometerKm : 0.0;
+      final latestOdometer =
+          records.isNotEmpty ? records.first.odometerKm : 0.0;
 
       // Create default vehicle
       final defaultVehicle = Vehicle(

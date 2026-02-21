@@ -49,7 +49,10 @@ class VehiclesScreen extends StatelessWidget {
             itemCount: vehicles.length,
             itemBuilder: (context, index) {
               final vehicle = vehicles[index];
-              final recordCount = provider.getRecordsForVehicle(vehicle.id).length;
+              final fillRecordCount =
+                  provider.getRecordsForVehicle(vehicle.id).length;
+              final maintenanceRecordCount =
+                  provider.getMaintenanceRecordsForVehicle(vehicle.id).length;
               final hasRecords = provider.hasRecordsForVehicle(vehicle.id);
               final isSelected = vehicle.id == provider.selectedVehicleId;
 
@@ -57,7 +60,8 @@ class VehiclesScreen extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: _VehicleCard(
                   vehicle: vehicle,
-                  recordCount: recordCount,
+                  fillRecordCount: fillRecordCount,
+                  maintenanceRecordCount: maintenanceRecordCount,
                   hasRecords: hasRecords,
                   isSelected: isSelected,
                   isDark: isDark,
@@ -72,7 +76,6 @@ class VehiclesScreen extends StatelessWidget {
 
   Widget _buildEmptyState(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Center(
       child: Padding(
@@ -130,14 +133,16 @@ class VehiclesScreen extends StatelessWidget {
 
 class _VehicleCard extends StatelessWidget {
   final Vehicle vehicle;
-  final int recordCount;
+  final int fillRecordCount;
+  final int maintenanceRecordCount;
   final bool hasRecords;
   final bool isSelected;
   final bool isDark;
 
   const _VehicleCard({
     required this.vehicle,
-    required this.recordCount,
+    required this.fillRecordCount,
+    required this.maintenanceRecordCount,
     required this.hasRecords,
     required this.isSelected,
     required this.isDark,
@@ -150,9 +155,8 @@ class _VehicleCard extends StatelessWidget {
     final provider = context.read<RecordsProvider>();
 
     final displayName = vehicle.name;
-    final makeModel = [vehicle.make, vehicle.model]
-        .where((s) => s.isNotEmpty)
-        .join(' • ');
+    final makeModel =
+        [vehicle.make, vehicle.model].where((s) => s.isNotEmpty).join(' • ');
     final hasDetails = makeModel.isNotEmpty || vehicle.plateNumber != null;
 
     return GlassPanel(
@@ -160,9 +164,7 @@ class _VehicleCard extends StatelessWidget {
           ? (isDark
               ? AppColors.primary.withOpacity(0.15)
               : AppColors.primary.withOpacity(0.08))
-          : (isDark
-              ? AppColors.settingsCardDark.withOpacity(0.92)
-              : null),
+          : (isDark ? AppColors.settingsCardDark.withOpacity(0.92) : null),
       border: Border.all(
         color: isSelected
             ? AppColors.primary.withOpacity(0.5)
@@ -308,7 +310,17 @@ class _VehicleCard extends StatelessWidget {
                 _InfoItem(
                   icon: Icons.local_gas_station_rounded,
                   label: 'Fill Records',
-                  value: recordCount.toString(),
+                  value: fillRecordCount.toString(),
+                ),
+                Container(
+                  width: 1,
+                  height: 32,
+                  color: colorScheme.onSurface.withOpacity(0.1),
+                ),
+                _InfoItem(
+                  icon: Icons.build_rounded,
+                  label: 'Services',
+                  value: maintenanceRecordCount.toString(),
                 ),
               ],
             ),
@@ -323,7 +335,8 @@ class _VehicleCard extends StatelessWidget {
                       onPressed: () {
                         provider.setSelectedVehicle(vehicle.id);
                       },
-                      icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
+                      icon: const Icon(Icons.check_circle_outline_rounded,
+                          size: 18),
                       label: const Text('Select'),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -337,7 +350,8 @@ class _VehicleCard extends StatelessWidget {
                       await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => EditVehicleScreen(vehicle: vehicle),
+                          builder: (context) =>
+                              EditVehicleScreen(vehicle: vehicle),
                         ),
                       );
                     },
@@ -351,7 +365,8 @@ class _VehicleCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => _confirmDelete(context, vehicle, hasRecords),
+                    onPressed: () =>
+                        _confirmDelete(context, vehicle, hasRecords),
                     icon: const Icon(Icons.delete_rounded, size: 18),
                     label: const Text('Delete'),
                     style: OutlinedButton.styleFrom(
@@ -371,6 +386,14 @@ class _VehicleCard extends StatelessWidget {
   void _confirmDelete(BuildContext context, Vehicle vehicle, bool hasRecords) {
     final theme = Theme.of(context);
     final provider = context.read<RecordsProvider>();
+    final fillRecords = provider.getRecordsForVehicle(vehicle.id).length;
+    final maintenanceRecords =
+        provider.getMaintenanceRecordsForVehicle(vehicle.id).length;
+    final totalRecords = fillRecords + maintenanceRecords;
+    final historyDescription = [
+      if (fillRecords > 0) '$fillRecords fuel',
+      if (maintenanceRecords > 0) '$maintenanceRecords maintenance',
+    ].join(' + ');
 
     showDialog(
       context: context,
@@ -378,8 +401,8 @@ class _VehicleCard extends StatelessWidget {
         title: Text('Delete ${vehicle.name}?'),
         content: Text(
           hasRecords
-              ? 'This vehicle has ${provider.getRecordsForVehicle(vehicle.id).length} fuel records. It will be marked as inactive instead of being permanently deleted.'
-              : 'This vehicle has no fuel records and will be permanently deleted. This action cannot be undone.',
+              ? 'This vehicle has $totalRecords log entries ($historyDescription). It will be marked as inactive instead of being permanently deleted.'
+              : 'This vehicle has no associated records and will be permanently deleted. This action cannot be undone.',
         ),
         actions: [
           TextButton(
