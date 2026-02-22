@@ -6,6 +6,7 @@ import '../models/fill_record.dart';
 import '../providers/records_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
+import 'add_vehicle_screen.dart';
 
 class AddRecordScreen extends StatefulWidget {
   const AddRecordScreen({super.key});
@@ -273,7 +274,45 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
               builder: (context, provider, child) {
                 final activeVehicles = provider.activeVehicles;
                 if (activeVehicles.isEmpty) {
-                  return const SizedBox.shrink();
+                  return _InputCard(
+                    label: 'Vehicle',
+                    icon: Icons.directions_car_rounded,
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.surfaceDarkElevated
+                            : AppColors.backgroundLight,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.outlineDark
+                              : AppColors.outlineLight,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Expanded(
+                            child: Text('No active vehicles.'),
+                          ),
+                          TextButton.icon(
+                            onPressed: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const AddVehicleScreen(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.add_rounded, size: 18),
+                            label: const Text('Add Vehicle'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
                 }
 
                 final selectedVehicleId = _selectedVehicleId.isNotEmpty
