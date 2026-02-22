@@ -57,7 +57,10 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final dateFormat = DateFormat('MMM dd, yyyy');
 
-    return Scaffold(
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      behavior: HitTestBehavior.translucent,
+      child: Scaffold(
       backgroundColor: isDark ? AppColors.backgroundDark : null,
       appBar: AppBar(
         leading: IconButton(
@@ -581,7 +584,8 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Future<void> _selectDate() async {
