@@ -60,7 +60,10 @@ class _EditRecordScreenState extends State<EditRecordScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final dateFormat = DateFormat('MMM dd, yyyy');
 
-    return Scaffold(
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      behavior: HitTestBehavior.translucent,
+      child: Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
@@ -336,7 +339,8 @@ class _EditRecordScreenState extends State<EditRecordScreen> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Future<void> _pickDate() async {
