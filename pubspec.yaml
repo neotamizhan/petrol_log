@@ -1,5 +1,5 @@
 name: petrol_log
-description: A Flutter app to log petrol filling records and track mileage.
+description: A Flutter app to log vehicle maintenance, fuel activity, and mileage.
 
 publish_to: 'none'
 

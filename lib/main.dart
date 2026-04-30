@@ -14,20 +14,20 @@ void main() async {
   runApp(
     ChangeNotifierProvider(
       create: (_) => RecordsProvider(storageService)..init(),
-      child: const PetrolLogApp(),
+      child: const VehicleLogbookApp(),
     ),
   );
 }
 
-class PetrolLogApp extends StatelessWidget {
-  const PetrolLogApp({super.key});
+class VehicleLogbookApp extends StatelessWidget {
+  const VehicleLogbookApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Consumer<RecordsProvider>(
       builder: (context, provider, child) {
         return MaterialApp(
-          title: 'Petrol Log',
+          title: 'Vehicle Logbook',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),

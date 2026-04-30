@@ -382,8 +382,7 @@ class RecordCard extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Record'),
-        content:
-            const Text('Are you sure you want to delete this fill record?'),
+        content: const Text('Are you sure you want to delete this fuel log?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),

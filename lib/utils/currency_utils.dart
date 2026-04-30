@@ -30,13 +30,26 @@ class CurrencyUtils {
     if (decimals == 0) {
       return r'^\d+$';
     }
-    return '^\\d+\\.?\\d{0,$decimals}';
+    return '^\\d+\\.?\\d{0,$decimals}\$';
   }
 
   /// Format a number to the appropriate number of decimal places for a currency
   static String formatAmount(double amount, String currencySymbol) {
     final decimals = getDecimalPlaces(currencySymbol);
-    return amount.toStringAsFixed(decimals);
+    if (decimals == 0) {
+      final fractional = amount - amount.truncateToDouble();
+      if ((fractional - 0.5).abs() < 0.000000001) {
+        return amount.floor().toString();
+      }
+      return amount.round().toString();
+    }
+
+    var scale = 1.0;
+    for (var i = 0; i < decimals; i++) {
+      scale *= 10;
+    }
+    final rounded = ((amount * scale) + 0.000000001).round() / scale;
+    return rounded.toStringAsFixed(decimals);
   }
 
   /// Get placeholder text for currency input

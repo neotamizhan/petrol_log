@@ -105,7 +105,7 @@ class VehiclesScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'Add your first vehicle to start tracking fuel records',
+              'Add your first vehicle to start its service and fuel history',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.6),
@@ -309,7 +309,7 @@ class _VehicleCard extends StatelessWidget {
                 ),
                 _InfoItem(
                   icon: Icons.local_gas_station_rounded,
-                  label: 'Fill Records',
+                  label: 'Fuel Logs',
                   value: fillRecordCount.toString(),
                 ),
                 Container(

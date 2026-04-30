@@ -64,7 +64,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
           icon: const Icon(Icons.close_rounded),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text('Add Fuel Record'),
+        title: const Text('Log Fuel'),
       ),
       body: Form(
         key: _formKey,
@@ -646,7 +646,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Fill record saved successfully!'),
+            content: const Text('Fuel log saved successfully!'),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
