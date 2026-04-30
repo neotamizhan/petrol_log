@@ -1,6 +1,6 @@
-# Petrol Log – Technical Architecture
+# Vehicle Logbook – Technical Architecture
 
-> **Last updated:** 2026-02-21
+> **Last updated:** 2026-04-30
 > **Version:** 1.0.0+3
 > **Stack:** Flutter (Dart 3.0+) · Provider · SharedPreferences
 
@@ -26,9 +26,10 @@
 
 ## 1. System Overview
 
-Petrol Log is a **fully offline, single-user mobile/desktop application** built with Flutter. It stores all data locally on the device using SharedPreferences. There are no backend services, no external APIs, and no network calls at runtime.
+Vehicle Logbook is a **fully offline, single-user mobile/desktop application** built with Flutter. It stores all data locally on the device using SharedPreferences. There are no backend services, no external APIs, and no network calls at runtime.
 
 Core responsibilities:
+- Record service, repair, inspection, and reminder activity per vehicle
 - Record and persist fuel fill events per vehicle
 - Calculate mileage, cost trends, and efficiency metrics
 - Predict the next refill date using a weighted-average forecasting model
@@ -43,22 +44,22 @@ Shows the system and its relationships with users and external elements.
 
 ```mermaid
 C4Context
-  title System Context – Petrol Log
+  title System Context – Vehicle Logbook
 
-  Person(driver, "Driver", "Primary user. Logs fuel fills,\nmaintenance, and views analytics.")
+  Person(driver, "Driver", "Primary user. Logs vehicle maintenance,\nfuel fills, and views analytics.")
 
-  System(petrolLog, "Petrol Log", "Flutter app that tracks fuel consumption,\nmaintenance schedules, and predicts\nnext refill date. Runs fully offline.")
+  System(petrolLog, "Vehicle Logbook", "Flutter app that tracks vehicle maintenance,\nfuel consumption, service schedules, and\nnext refill date. Runs fully offline.")
 
   System_Ext(csvFile, "CSV File", "External data file for\nbulk historical import.")
   System_Ext(deviceStorage, "Device Storage", "OS-managed local storage\n(SharedPreferences / file system).")
 
-  Rel(driver, petrolLog, "Logs fills, views stats,\nmanages vehicles & maintenance")
+  Rel(driver, petrolLog, "Logs vehicle activity, views stats,\nmanages vehicles & maintenance")
   Rel(petrolLog, deviceStorage, "Reads / writes all app data")
   Rel(driver, csvFile, "Provides for import")
   Rel(petrolLog, csvFile, "Parses on import request")
 ```
 
-> **Key point:** Petrol Log has no network dependency at runtime. All data lives on-device.
+> **Key point:** Vehicle Logbook has no network dependency at runtime. All data lives on-device.
 
 ---
 
@@ -68,11 +69,11 @@ Shows the major runtime containers (Flutter layers) inside the application.
 
 ```mermaid
 C4Container
-  title Container Diagram – Petrol Log
+  title Container Diagram – Vehicle Logbook
 
   Person(driver, "Driver")
 
-  Container_Boundary(app, "Petrol Log (Flutter App)") {
+  Container_Boundary(app, "Vehicle Logbook (Flutter App)") {
 
     Container(ui, "UI Layer", "Flutter Widgets\n(Material 3)", "11 screens + 2 reusable widgets.\nHandles all user interaction\nand data display.")
     Container(state, "State Layer", "Provider / ChangeNotifier", "RecordsProvider: single source of truth\nfor all app state. Exposes reactive\ngetters and analytics methods.")
@@ -148,8 +149,8 @@ C4Component
   Container_Boundary(ui, "UI Layer (lib/screens/)") {
 
     Component(splash, "SplashScreen", "splash_screen.dart", "Animated entry screen.\n1.7 s delay then navigate to Home.")
-    Component(home, "HomeScreen", "home_screen.dart", "4-tab shell:\n- Dashboard (stats + forecast + maintenance alerts)\n- Vehicles\n- Stats\n- Settings")
-    Component(addRecord, "AddRecordScreen", "add_record_screen.dart", "Form: date, odometer, fuel type,\ncost, notes. Auto-calculates volume.")
+    Component(home, "HomeScreen", "home_screen.dart", "Vehicle logbook dashboard.\nShows selected vehicle, maintenance status,\nnext-step cards, and combined service/fuel timeline.")
+    Component(addRecord, "AddRecordScreen", "add_record_screen.dart", "Fuel log form: date, odometer,\nfuel type, cost, notes. Auto-calculates volume.")
     Component(editRecord, "EditRecordScreen", "edit_record_screen.dart", "Pre-filled form. Adds Delete action.")
     Component(vehicles, "VehiclesScreen", "vehicles_screen.dart", "List of vehicles with status indicators.")
     Component(addVehicle, "AddVehicleScreen", "add_vehicle_screen.dart", "Form: name, make, model, year,\nplate, starting odometer.")
@@ -157,7 +158,7 @@ C4Component
     Component(maintenance, "MaintenanceScreen", "maintenance_screen.dart", "Service history per vehicle.\nStatus badges: Overdue / Due Soon / On Track.")
     Component(addMaint, "AddMaintenanceScreen", "add_maintenance_screen.dart", "Form: service type, date, odometer,\ncost, next-due targets, notes.")
     Component(stats, "StatsScreen", "stats_screen.dart", "Analytics dashboard.\nFilters by vehicle and fuel type.")
-    Component(settings, "SettingsScreen", "settings_screen.dart", "Fuel price, currency, theme,\nfuel type management, CSV import.")
+    Component(settings, "SettingsScreen", "settings_screen.dart", "Fuel pricing, currency, theme,\nfuel type management, CSV import.")
   }
 ```
 
@@ -310,27 +311,33 @@ specific ID   → filter to matching records only
 ```mermaid
 flowchart TD
   A([App Launch]) --> B[SplashScreen\n1.7s animated]
-  B --> C[HomeScreen\n4-tab shell]
+  B --> C[HomeScreen\nVehicle logbook dashboard]
 
-  C --> C1[Tab 1: Dashboard\nStats · Forecast · Maintenance alerts · Recent fills]
-  C --> C2[Tab 2: VehiclesScreen]
-  C --> C3[Tab 3: StatsScreen\nAnalytics with filters]
-  C --> C4[Tab 4: SettingsScreen\nPreferences · Fuel types · CSV import]
+  C --> C1[Selected vehicle switcher]
+  C --> C2[Care status panel\nOdometer · Open items · Log entries]
+  C --> C3[Next-step cards\nMaintenance status · Fuel forecast]
+  C --> C4[Combined activity timeline\nService entries + fuel logs]
 
-  C1 -->|FAB| D[AddRecordScreen]
-  C1 -->|Tap record| E[EditRecordScreen]
-  C1 -->|Tap maintenance alert| F[MaintenanceScreen]
+  C -->|Log Activity FAB -> Service| D[AddMaintenanceScreen]
+  C -->|Log Activity FAB -> Fuel| E[AddRecordScreen]
+  C -->|Header insights| F[StatsScreen\nAnalytics with filters]
+  C -->|Header settings| G[SettingsScreen\nPreferences · Fuel types · CSV import]
+  C1 -->|Manage vehicles| H[VehiclesScreen]
 
-  C2 -->|FAB| G[AddVehicleScreen]
-  C2 -->|Tap vehicle| H[EditVehicleScreen]
+  C4 -->|Tap service entry| I[AddMaintenanceScreen\nEdit mode]
+  C4 -->|Tap fuel entry| J[EditRecordScreen]
+  C3 -->|Tap maintenance card| K[MaintenanceScreen]
 
-  F -->|FAB| I[AddMaintenanceScreen]
+  H -->|FAB| L[AddVehicleScreen]
+  H -->|Tap vehicle| M[EditVehicleScreen]
+  K -->|FAB| D
 
-  D -->|Save| C1
-  E -->|Save / Delete| C1
-  G -->|Save| C2
-  H -->|Save / Delete| C2
-  I -->|Save| F
+  D -->|Save| C
+  E -->|Save| C
+  I -->|Save| C
+  J -->|Save / Delete| C
+  L -->|Save| H
+  M -->|Save / Delete| H
 ```
 
 ---
@@ -484,7 +491,7 @@ petrol_log/
 │   │   └── import_service.dart          # CSV import with file picker
 │   ├── screens/
 │   │   ├── splash_screen.dart
-│   │   ├── home_screen.dart             # 4-tab shell
+│   │   ├── home_screen.dart             # Vehicle logbook dashboard + combined timeline
 │   │   ├── add_record_screen.dart
 │   │   ├── edit_record_screen.dart
 │   │   ├── add_vehicle_screen.dart
@@ -495,7 +502,7 @@ petrol_log/
 │   │   ├── stats_screen.dart
 │   │   └── settings_screen.dart
 │   ├── widgets/
-│   │   ├── record_card.dart             # Fill record display card
+│   │   ├── record_card.dart             # Fuel log display card
 │   │   └── glass_panel.dart             # Glassmorphism container
 │   ├── theme/
 │   │   └── app_theme.dart               # Material 3 light/dark themes
@@ -526,6 +533,7 @@ petrol_log/
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-04-30 | 1.0.0+3 | Reframed the product as Vehicle Logbook with a maintenance-first home workflow, one Log Activity entry point, and a combined service/fuel timeline. |
 | 2026-02-21 | 1.0.0+3 | Fixed Mermaid syntax in “App Startup Sequence” by replacing a semicolon-delimited action label with parser-safe wording. |
 | 2026-02-21 | 1.0.0+3 | Fixed Mermaid C4 syntax in §4b and §4c by converting multiline `Component(...)` declarations to single-line statements and normalizing special symbols for parser compatibility. |
 | 2026-02-21 | 1.0.0+3 | Fixed Mermaid C4 container/component syntax by putting `Container(...)`, `ContainerDb(...)`, and `Component(...)` definitions on single lines for parser compatibility. |

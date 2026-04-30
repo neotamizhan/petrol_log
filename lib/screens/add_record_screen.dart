@@ -6,6 +6,7 @@ import '../models/fill_record.dart';
 import '../providers/records_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
+import 'add_vehicle_screen.dart';
 
 class AddRecordScreen extends StatefulWidget {
   const AddRecordScreen({super.key});
@@ -56,14 +57,17 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final dateFormat = DateFormat('MMM dd, yyyy');
 
-    return Scaffold(
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      behavior: HitTestBehavior.translucent,
+      child: Scaffold(
       backgroundColor: isDark ? AppColors.backgroundDark : null,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text('Add Fuel Record'),
+        title: const Text('Log Fuel'),
       ),
       body: Form(
         key: _formKey,
@@ -273,7 +277,45 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
               builder: (context, provider, child) {
                 final activeVehicles = provider.activeVehicles;
                 if (activeVehicles.isEmpty) {
-                  return const SizedBox.shrink();
+                  return _InputCard(
+                    label: 'Vehicle',
+                    icon: Icons.directions_car_rounded,
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.surfaceDarkElevated
+                            : AppColors.backgroundLight,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.outlineDark
+                              : AppColors.outlineLight,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Expanded(
+                            child: Text('No active vehicles.'),
+                          ),
+                          TextButton.icon(
+                            onPressed: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const AddVehicleScreen(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.add_rounded, size: 18),
+                            label: const Text('Add Vehicle'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
                 }
 
                 final selectedVehicleId = _selectedVehicleId.isNotEmpty
@@ -542,7 +584,8 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Future<void> _selectDate() async {
@@ -607,7 +650,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Fill record saved successfully!'),
+            content: const Text('Fuel log saved successfully!'),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),

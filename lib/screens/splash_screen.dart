@@ -79,21 +79,21 @@ class _SplashScreenState extends State<SplashScreen> {
                     ],
                   ),
                   child: const Icon(
-                    Icons.local_gas_station_rounded,
+                    Icons.directions_car_filled_rounded,
                     color: Colors.white,
                     size: 44,
                   ),
                 ),
                 const SizedBox(height: 18),
                 Text(
-                  'Petrol Log',
+                  'Vehicle Logbook',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Track fuel, mileage, and spend',
+                  'Track service, repairs, fuel, and reminders',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(context)
                             .colorScheme

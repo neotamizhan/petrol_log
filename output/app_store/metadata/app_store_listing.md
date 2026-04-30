@@ -1,25 +1,26 @@
-# App Store Listing Draft - Petrol Log
+# App Store Listing Draft - Vehicle Logbook
 
 ## App Name
-Petrol Log
+Vehicle Logbook
 
 ## Subtitle (<= 30 chars)
-Fuel Tracker and Mileage
+Maintenance and Fuel Log
 
 ## Promotional Text (<= 170 chars)
-Track every fuel stop in seconds and keep your mileage, spend, and refill rhythm visible at all times with a clean interface built for daily driving.
+Keep service, repairs, reminders, fuel, mileage, and spend in one clear vehicle history built for everyday ownership.
 
 ## Keywords (<= 100 chars)
-fuel tracker,mileage,gas log,car expenses,odometer,petrol,cost tracking,refill
+vehicle maintenance,service log,car repair,fuel tracker,mileage,odometer,expenses,reminders
 
 ## Description
-Petrol Log is a minimal fuel tracker for drivers who care about clean records and accurate insights.
+Vehicle Logbook is a focused maintenance and fuel tracker for drivers who care about clean records and useful ownership history.
 
 What you can do:
-- Log each fill with date, odometer, cost, and notes.
-- Review efficiency and refill intervals automatically.
+- Log services, repairs, inspections, reminders, and fuel purchases.
+- Review a combined vehicle timeline with maintenance status front and center.
+- Set next due odometer/date for recurring service work.
 - Analyze monthly fuel spending and mileage trends.
 - Use Refuel Radar to estimate your next refill window and projected cost.
 - Keep everything in your preferred currency and theme.
 
-Built for speed, clarity, and long-term tracking.
+Built for clarity, routine maintenance, and long-term vehicle ownership.

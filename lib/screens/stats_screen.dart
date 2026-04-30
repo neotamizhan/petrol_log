@@ -60,9 +60,11 @@ class _StatsScreenState extends State<StatsScreen> {
 
             final fuelTypeId =
                 selectedFilterId == 'all' ? null : selectedFilterId;
-            final vehicleId =
-                selectedVehicleFilterId == 'all' ? null : selectedVehicleFilterId;
-            final stats = provider.getOverallStats(fuelTypeId: fuelTypeId, vehicleId: vehicleId);
+            final vehicleId = selectedVehicleFilterId == 'all'
+                ? null
+                : selectedVehicleFilterId;
+            final stats = provider.getOverallStats(
+                fuelTypeId: fuelTypeId, vehicleId: vehicleId);
             final totalRecords = stats['totalRecords'] as int;
             final filterFuelTypes = provider.fuelTypes
                 .where(
@@ -99,7 +101,7 @@ class _StatsScreenState extends State<StatsScreen> {
                               Row(
                                 children: [
                                   Text(
-                                    'Petrol Log',
+                                    'Vehicle Logbook',
                                     style:
                                         theme.textTheme.titleMedium?.copyWith(
                                       fontWeight: FontWeight.w700,
@@ -185,7 +187,7 @@ class _StatsScreenState extends State<StatsScreen> {
                             Row(
                               children: [
                                 Text(
-                                  'Petrol Log',
+                                  'Vehicle Logbook',
                                   style: theme.textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -428,7 +430,8 @@ class _VehicleFilterBar extends StatelessWidget {
             selected: selected,
             onSelected: (_) => onSelected(optionId),
             avatar: selected && optionId != 'all'
-                ? const Icon(Icons.directions_car_rounded, size: 16, color: Colors.white)
+                ? const Icon(Icons.directions_car_rounded,
+                    size: 16, color: Colors.white)
                 : null,
             labelStyle: theme.textTheme.labelLarge?.copyWith(
               fontWeight: FontWeight.w600,
@@ -1009,7 +1012,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Add some fill records to see your statistics',
+              'Add vehicle activity to see your statistics',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onSurface.withOpacity(0.6),

@@ -1,11 +1,11 @@
 {
-    "name": "petrol_log",
-    "short_name": "petrol_log",
+    "name": "Vehicle Logbook",
+    "short_name": "Logbook",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "A vehicle maintenance and fuel logging app.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

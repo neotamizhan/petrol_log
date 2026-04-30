@@ -755,7 +755,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 24),
             Center(
               child: Text(
-                'Petrol Log v1.0.0',
+                'Vehicle Logbook v1.0.0',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: colorScheme.onSurface.withOpacity(0.4),
                 ),

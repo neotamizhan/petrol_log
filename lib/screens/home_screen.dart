@@ -1,18 +1,46 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+
+import '../models/fill_record.dart';
 import '../models/maintenance_record.dart';
+import '../models/vehicle.dart';
 import '../providers/records_provider.dart';
-import '../widgets/record_card.dart';
+import '../theme/app_theme.dart';
+import '../utils/currency_utils.dart';
+import 'add_maintenance_screen.dart';
 import 'add_record_screen.dart';
+import 'add_vehicle_screen.dart';
 import 'edit_record_screen.dart';
 import 'maintenance_screen.dart';
 import 'settings_screen.dart';
 import 'stats_screen.dart';
 import 'vehicles_screen.dart';
-import '../theme/app_theme.dart';
-import '../utils/currency_utils.dart';
-import '../widgets/glass_panel.dart';
+
+enum _LogEntryType { maintenance, fuel }
+
+class _LogEntry {
+  final _LogEntryType type;
+  final FillRecord? fuelRecord;
+  final MaintenanceRecord? maintenanceRecord;
+
+  const _LogEntry.fuel(this.fuelRecord)
+      : type = _LogEntryType.fuel,
+        maintenanceRecord = null;
+
+  const _LogEntry.maintenance(this.maintenanceRecord)
+      : type = _LogEntryType.maintenance,
+        fuelRecord = null;
+
+  DateTime get date {
+    switch (type) {
+      case _LogEntryType.fuel:
+        return fuelRecord!.date;
+      case _LogEntryType.maintenance:
+        return maintenanceRecord!.serviceDate;
+    }
+  }
+}
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -20,232 +48,197 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
       backgroundColor: isDark ? AppColors.backgroundDark : null,
       body: SafeArea(
         child: Consumer<RecordsProvider>(
           builder: (context, provider, child) {
+            if (provider.isLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            final vehicles = provider.activeVehicles;
+            if (vehicles.isEmpty) {
+              return _NoVehicleHome(
+                onAddVehicle: () => _navigateToAddVehicle(context),
+                onSettings: () => _navigateToSettings(context),
+              );
+            }
+
             final selectedVehicleId = provider.selectedVehicleId;
+            final selectedVehicle = provider.selectedVehicle;
+            final fuelRecords = provider.getRecordsForVehicle(selectedVehicleId)
+              ..sort((a, b) => b.date.compareTo(a.date));
+            final maintenanceRecords =
+                provider.getMaintenanceRecordsForVehicle(selectedVehicleId);
+            final timeline = <_LogEntry>[
+              ...maintenanceRecords.map(_LogEntry.maintenance),
+              ...fuelRecords.map(_LogEntry.fuel),
+            ]..sort((a, b) => b.date.compareTo(a.date));
+
             final stats =
                 provider.getOverallStats(vehicleId: selectedVehicleId);
-            final sorted = provider.records
-                .where((record) => record.vehicleId == selectedVehicleId)
-                .toList()
-              ..sort((a, b) => b.date.compareTo(a.date));
-            final latest = sorted.isNotEmpty ? sorted.first : null;
-            final lastRefuelDays = latest == null
-                ? null
-                : DateTime.now().difference(latest.date).inDays;
-            final forecast =
-                provider.getRefillForecast(vehicleId: selectedVehicleId);
             final maintenanceOverview =
                 provider.getMaintenanceOverview(vehicleId: selectedVehicleId);
+            final forecast =
+                provider.getRefillForecast(vehicleId: selectedVehicleId);
+            final highestLoggedOdometer =
+                provider.getHighestOdometerForVehicle(selectedVehicleId);
+            final vehicleOdometer = selectedVehicle?.currentOdometer ?? 0;
+            final currentOdometer = highestLoggedOdometer > vehicleOdometer
+                ? highestLoggedOdometer
+                : vehicleOdometer;
 
-            return Stack(
-              children: [
-                if (isDark)
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: CustomPaint(
-                        painter: _DotPatternPainter(
-                          dotColor:
-                              AppColors.surfaceDarkElevated.withOpacity(0.58),
-                          spacing: 20,
-                        ),
-                      ),
+            return CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: _HomeHeader(
+                    vehicle: selectedVehicle,
+                    onOpenStats: () => _navigateToStats(context),
+                    onOpenSettings: () => _navigateToSettings(context),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                    child: _VehicleSwitcher(
+                      vehicles: vehicles,
+                      selectedVehicleId: selectedVehicleId,
+                      onSelected: provider.setSelectedVehicle,
+                      onManage: () => _navigateToVehicles(context),
                     ),
                   ),
-                CustomScrollView(
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? AppColors.backgroundDark.withOpacity(0.78)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(16),
-                            border: isDark
-                                ? Border.all(
-                                    color:
-                                        AppColors.outlineDark.withOpacity(0.5))
-                                : null,
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    height: 40,
-                                    width: 40,
-                                    decoration: BoxDecoration(
-                                      color:
-                                          AppColors.primary.withOpacity(0.15),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: const Icon(
-                                      Icons.local_gas_station_rounded,
-                                      color: AppColors.primary,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Petrol Log',
-                                        style: theme.textTheme.titleLarge
-                                            ?.copyWith(
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      Text(
-                                        'Recent Records',
-                                        style:
-                                            theme.textTheme.bodySmall?.copyWith(
-                                          color: colorScheme.onSurface
-                                              .withOpacity(0.6),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              Row(
-                                children: [
-                                  _IconBubble(
-                                    icon: Icons.bar_chart_rounded,
-                                    onTap: () => _navigateToStats(context),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  _IconBubble(
-                                    icon: Icons.build_rounded,
-                                    onTap: () =>
-                                        _navigateToMaintenance(context),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  _IconBubble(
-                                    icon: Icons.settings_rounded,
-                                    onTap: () => _navigateToSettings(context),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                        child: _VehicleSelector(
-                          provider: provider,
-                          isDark: isDark,
-                        ),
-                      ),
-                    ),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                        child: _SummaryCard(
-                          currency: provider.currency,
-                          currentOdometer: latest?.odometerKm ?? 0,
-                          averageMileage:
-                              (stats['averageMileage'] as double?) ?? 0,
-                          lastRefuelDays: lastRefuelDays,
-                        ),
-                      ),
-                    ),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-                        child: _RefillRadarCard(
-                          forecast: forecast,
-                          currency: provider.currency,
-                        ),
-                      ),
-                    ),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-                        child: _MaintenanceDigestCard(
-                          overview: maintenanceOverview,
-                          onTapManage: () => _navigateToMaintenance(context),
-                        ),
-                      ),
-                    ),
-                    if (provider.isLoading)
-                      const SliverFillRemaining(
-                        child: Center(child: CircularProgressIndicator()),
-                      )
-                    else if (sorted.isEmpty)
-                      SliverFillRemaining(
-                        child: _EmptyState(colorScheme: colorScheme),
-                      )
-                    else
-                      SliverPadding(
-                        padding: const EdgeInsets.only(bottom: 110),
-                        sliver: SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              final record = sorted[index];
-                              final recordStats =
-                                  provider.getRecordStats(record);
-
-                              return TweenAnimationBuilder<double>(
-                                tween: Tween(begin: 0, end: 1),
-                                duration:
-                                    Duration(milliseconds: 300 + (index * 50)),
-                                curve: Curves.easeOutCubic,
-                                builder: (context, value, child) {
-                                  return Transform.translate(
-                                    offset: Offset(0, 16 * (1 - value)),
-                                    child: Opacity(
-                                      opacity: value,
-                                      child: child,
-                                    ),
-                                  );
-                                },
-                                child: RecordCard(
-                                  record: record,
-                                  stats: recordStats,
-                                  currency: provider.currency,
-                                  onDelete: () =>
-                                      provider.deleteRecord(record.id),
-                                  onEdit: () =>
-                                      _navigateToEditRecord(context, record),
-                                ),
-                              );
-                            },
-                            childCount: sorted.length,
-                          ),
-                        ),
-                      ),
-                  ],
                 ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+                    child: _CareStatusPanel(
+                      overview: maintenanceOverview,
+                      currentOdometer: currentOdometer,
+                      totalEntries:
+                          fuelRecords.length + maintenanceRecords.length,
+                      averageMileage: (stats['averageMileage'] as double?) ?? 0,
+                      onLogService: () => _navigateToAddMaintenance(context),
+                      onLogFuel: () => _navigateToAddFuel(context),
+                      onOpenMaintenance: () =>
+                          _navigateToMaintenance(context, selectedVehicleId),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                    child: _NextStepsRow(
+                      overview: maintenanceOverview,
+                      forecast: forecast,
+                      currency: provider.currency,
+                      onOpenMaintenance: () =>
+                          _navigateToMaintenance(context, selectedVehicleId),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                    child: _SectionTitle(
+                      title: 'Activity',
+                      actionLabel: 'View services',
+                      onAction: () =>
+                          _navigateToMaintenance(context, selectedVehicleId),
+                    ),
+                  ),
+                ),
+                if (timeline.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: _EmptyTimeline(
+                      onLogService: () => _navigateToAddMaintenance(context),
+                      onLogFuel: () => _navigateToAddFuel(context),
+                    ),
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 110),
+                    sliver: SliverList.separated(
+                      itemCount: timeline.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) {
+                        final entry = timeline[index];
+                        return _TimelineCard(
+                          entry: entry,
+                          provider: provider,
+                          onEditFuel: (record) =>
+                              _navigateToEditFuel(context, record),
+                          onEditMaintenance: (record) =>
+                              _navigateToEditMaintenance(context, record),
+                        );
+                      },
+                    ),
+                  ),
               ],
             );
           },
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _navigateToAddRecord(context),
+        onPressed: () => _showLogActivitySheet(context),
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Fill'),
-        elevation: 6,
+        label: const Text('Log Activity'),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
-  void _navigateToAddRecord(BuildContext context) {
+  void _showLogActivitySheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Log activity',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _SheetAction(
+                  icon: Icons.build_circle_rounded,
+                  title: 'Service or repair',
+                  subtitle: 'Maintenance, inspection, parts, insurance',
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    _navigateToAddMaintenance(context);
+                  },
+                ),
+                const SizedBox(height: 10),
+                _SheetAction(
+                  icon: Icons.local_gas_station_rounded,
+                  title: 'Fuel purchase',
+                  subtitle: 'Cost, fuel type, odometer, notes',
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    _navigateToAddFuel(context);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _navigateToAddFuel(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const AddRecordScreen(),
@@ -253,10 +246,53 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  void _navigateToEditRecord(BuildContext context, record) {
+  void _navigateToEditFuel(BuildContext context, FillRecord record) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => EditRecordScreen(record: record),
+      ),
+    );
+  }
+
+  void _navigateToAddMaintenance(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const AddMaintenanceScreen(),
+      ),
+    );
+  }
+
+  void _navigateToEditMaintenance(
+    BuildContext context,
+    MaintenanceRecord record,
+  ) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => AddMaintenanceScreen(record: record),
+      ),
+    );
+  }
+
+  void _navigateToMaintenance(BuildContext context, String vehicleId) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => MaintenanceScreen(initialVehicleId: vehicleId),
+      ),
+    );
+  }
+
+  void _navigateToVehicles(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const VehiclesScreen(),
+      ),
+    );
+  }
+
+  void _navigateToAddVehicle(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const AddVehicleScreen(),
       ),
     );
   }
@@ -276,810 +312,72 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
-
-  void _navigateToMaintenance(BuildContext context) {
-    final provider = context.read<RecordsProvider>();
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => MaintenanceScreen(
-          initialVehicleId: provider.selectedVehicleId,
-        ),
-      ),
-    );
-  }
 }
 
-class _EmptyState extends StatelessWidget {
-  final ColorScheme colorScheme;
+class _HomeHeader extends StatelessWidget {
+  final Vehicle? vehicle;
+  final VoidCallback onOpenStats;
+  final VoidCallback onOpenSettings;
 
-  const _EmptyState({required this.colorScheme});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.local_gas_station_rounded,
-                size: 54,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'No Fill Records Yet',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Tap the button below to log your first petrol fill',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurface.withOpacity(0.6),
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _IconBubble extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _IconBubble({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        height: 40,
-        width: 40,
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.surfaceDarkElevated : Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isDark
-                ? AppColors.outlineDark.withOpacity(0.7)
-                : AppColors.outlineLight,
-          ),
-        ),
-        child: Icon(
-          icon,
-          size: 20,
-          color: Theme.of(context).colorScheme.onSurface,
-        ),
-      ),
-    );
-  }
-}
-
-class _SummaryCard extends StatelessWidget {
-  final String currency;
-  final double currentOdometer;
-  final double averageMileage;
-  final int? lastRefuelDays;
-
-  const _SummaryCard({
-    required this.currency,
-    required this.currentOdometer,
-    required this.averageMileage,
-    required this.lastRefuelDays,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final lastRefuelText = lastRefuelDays == null
-        ? 'No data'
-        : lastRefuelDays == 0
-            ? 'Today'
-            : '$lastRefuelDays days ago';
-
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.primary,
-            AppColors.primaryDark,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Current Odometer',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.white70,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '${currentOdometer.toStringAsFixed(0)} km',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-              Container(
-                height: 40,
-                width: 40,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(
-                  Icons.speed_rounded,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _SummaryMetric(
-                  label: 'Avg. Mileage',
-                  value: averageMileage > 0
-                      ? '${averageMileage.toStringAsFixed(1)} km/L'
-                      : '--',
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _SummaryMetric(
-                  label: 'Last Refuel',
-                  value: lastRefuelText,
-                ),
-              ),
-            ],
-          ),
-          if (!isDark) const SizedBox(height: 4),
-          if (!isDark)
-            Text(
-              'Currency: $currency',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: Colors.white70,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SummaryMetric extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _SummaryMetric({
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.white70,
-                ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RefillRadarCard extends StatelessWidget {
-  final Map<String, dynamic>? forecast;
-  final String currency;
-
-  const _RefillRadarCard({
-    required this.forecast,
-    required this.currency,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    if (forecast == null) {
-      return Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.surfaceDark : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isDark ? AppColors.outlineDark : AppColors.outlineLight,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              height: 44,
-              width: 44,
-              decoration: BoxDecoration(
-                color: AppColors.accentBlue.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child:
-                  const Icon(Icons.radar_rounded, color: AppColors.accentBlue),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Refuel Radar unlocks after your next fill. Add more records for AI-style predictions.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.7),
-                  height: 1.35,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    final status = forecast!['status'] as String;
-    final daysUntilRefill = forecast!['daysUntilRefill'] as int;
-    final nextRefillDate = forecast!['nextRefillDate'] as DateTime;
-    final projectedOdometerKm =
-        (forecast!['projectedOdometerKm'] as num).toDouble();
-    final expectedCost = (forecast!['expectedCost'] as num).toDouble();
-    final confidence = (forecast!['confidence'] as num).toDouble();
-    final forecastDays = forecast!['forecastDays'] as int;
-    final intervalCount = forecast!['intervalCount'] as int;
-    final progress =
-        ((forecast!['progress'] as num).toDouble()).clamp(0.0, 1.0);
-    final dateFormat = DateFormat('EEE, dd MMM');
-
-    final statusText = daysUntilRefill < 0
-        ? '${daysUntilRefill.abs()} days overdue'
-        : daysUntilRefill == 0
-            ? 'Refuel due today'
-            : 'Refuel in $daysUntilRefill day${daysUntilRefill == 1 ? '' : 's'}';
-
-    final statusColor = _statusColor(status);
-    final confidenceLabel = _confidenceLabel(confidence);
-    final confidenceColor = _confidenceColor(confidence);
-
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: _gradientForStatus(status),
-        ),
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: statusColor.withOpacity(0.35),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                height: 40,
-                width: 40,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(
-                  Icons.radar_rounded,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Refuel Radar',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.17),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '$confidenceLabel confidence',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            statusText,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Expected around ${dateFormat.format(nextRefillDate)} based on your last $intervalCount fills.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: Colors.white.withOpacity(0.86),
-            ),
-          ),
-          const SizedBox(height: 14),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 8,
-              backgroundColor: Colors.white.withOpacity(0.22),
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _ForecastMetric(
-                  label: 'Expected Cost',
-                  value:
-                      '$currency${CurrencyUtils.formatAmount(expectedCost, currency)}',
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _ForecastMetric(
-                  label: 'Target Odo',
-                  value: '${projectedOdometerKm.toStringAsFixed(0)} km',
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _ForecastMetric(
-                  label: 'Cycle',
-                  value: '$forecastDays days',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Model stability: $confidenceLabel',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: confidenceColor,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<Color> _gradientForStatus(String status) {
-    switch (status) {
-      case 'overdue':
-        return const [Color(0xFFEF4444), Color(0xFFB91C1C)];
-      case 'soon':
-        return const [Color(0xFFF59E0B), Color(0xFFD97706)];
-      default:
-        return const [AppColors.accentBlue, AppColors.primaryDark];
-    }
-  }
-
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'overdue':
-        return const Color(0xFFEF4444);
-      case 'soon':
-        return const Color(0xFFF59E0B);
-      default:
-        return AppColors.accentBlue;
-    }
-  }
-
-  String _confidenceLabel(double confidence) {
-    if (confidence >= 0.75) {
-      return 'High';
-    }
-    if (confidence >= 0.5) {
-      return 'Medium';
-    }
-    return 'Low';
-  }
-
-  Color _confidenceColor(double confidence) {
-    if (confidence >= 0.75) {
-      return const Color(0xFFD6F6E7);
-    }
-    if (confidence >= 0.5) {
-      return const Color(0xFFFFF2CC);
-    }
-    return const Color(0xFFFEE2E2);
-  }
-}
-
-class _MaintenanceDigestCard extends StatelessWidget {
-  final Map<String, dynamic> overview;
-  final VoidCallback onTapManage;
-
-  const _MaintenanceDigestCard({
-    required this.overview,
-    required this.onTapManage,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final totalRecords = overview['totalRecords'] as int;
-    final overdueCount = overview['overdueCount'] as int;
-    final dueSoonCount = overview['dueSoonCount'] as int;
-    final scheduledItems = overview['scheduledItems'] as int;
-    final dueItems =
-        (overview['dueItems'] as List<dynamic>).cast<Map<String, dynamic>>();
-    final needsAttention = overdueCount > 0 || dueSoonCount > 0;
-
-    final title = totalRecords == 0
-        ? 'Maintenance'
-        : needsAttention
-            ? 'Maintenance Alert'
-            : 'Maintenance On Track';
-    final subtitle = totalRecords == 0
-        ? 'Track services like oil change, brake jobs, and inspections.'
-        : needsAttention
-            ? _attentionText(dueItems)
-            : 'No urgent service tasks for now.';
-
-    return InkWell(
-      onTap: onTapManage,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.surfaceDark : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: needsAttention
-                ? (overdueCount > 0
-                    ? const Color(0xFFEF4444).withOpacity(0.45)
-                    : AppColors.accentAmber.withOpacity(0.45))
-                : (isDark ? AppColors.outlineDark : AppColors.outlineLight),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  height: 40,
-                  width: 40,
-                  decoration: BoxDecoration(
-                    color: (needsAttention
-                            ? (overdueCount > 0
-                                ? const Color(0xFFEF4444)
-                                : AppColors.accentAmber)
-                            : AppColors.primary)
-                        .withOpacity(0.16),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.build_rounded,
-                    color: needsAttention
-                        ? (overdueCount > 0
-                            ? const Color(0xFFEF4444)
-                            : AppColors.accentAmber)
-                        : AppColors.primary,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      Text(
-                        subtitle,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.65),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right_rounded),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _MaintenanceChip(
-                  label: 'Records',
-                  value: totalRecords.toString(),
-                ),
-                _MaintenanceChip(
-                  label: 'Scheduled',
-                  value: scheduledItems.toString(),
-                ),
-                _MaintenanceChip(
-                  label: 'Overdue',
-                  value: overdueCount.toString(),
-                ),
-                _MaintenanceChip(
-                  label: 'Due Soon',
-                  value: dueSoonCount.toString(),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _attentionText(List<Map<String, dynamic>> dueItems) {
-    if (dueItems.isEmpty) {
-      return 'Upcoming services detected.';
-    }
-    final first = dueItems.first['record'] as MaintenanceRecord;
-    final remaining = dueItems.length - 1;
-    if (remaining <= 0) {
-      return '${first.serviceType} needs attention.';
-    }
-    return '${first.serviceType} and $remaining more need attention.';
-  }
-}
-
-class _MaintenanceChip extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _MaintenanceChip({
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        '$label: $value',
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-      ),
-    );
-  }
-}
-
-class _ForecastMetric extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _ForecastMetric({
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.16),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Colors.white70,
-                  fontWeight: FontWeight.w600,
-                ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _VehicleSelector extends StatelessWidget {
-  final RecordsProvider provider;
-  final bool isDark;
-
-  const _VehicleSelector({
-    required this.provider,
-    required this.isDark,
+  const _HomeHeader({
+    required this.vehicle,
+    required this.onOpenStats,
+    required this.onOpenSettings,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final seenVehicleIds = <String>{};
-    final activeVehicles = provider.activeVehicles
-        .where((vehicle) => seenVehicleIds.add(vehicle.id))
-        .toList();
+    final vehicleName = vehicle?.name ?? 'Vehicle';
 
-    if (activeVehicles.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    final selectedVehicleId = provider.selectedVehicleId;
-    final selectedIsValid =
-        activeVehicles.any((vehicle) => vehicle.id == selectedVehicleId);
-    final dropdownValue =
-        selectedIsValid ? selectedVehicleId : activeVehicles.first.id;
-
-    if (!selectedIsValid) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (provider.selectedVehicleId != dropdownValue) {
-          provider.setSelectedVehicle(dropdownValue);
-        }
-      });
-    }
-
-    return GlassPanel(
-      color: isDark
-          ? AppColors.surfaceDark.withOpacity(0.7)
-          : Colors.white.withOpacity(0.95),
-      border: Border.all(
-        color: isDark ? AppColors.outlineDark : AppColors.outlineLight,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      borderRadius: BorderRadius.circular(16),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
         children: [
           Container(
-            height: 36,
-            width: 36,
+            height: 44,
+            width: 44,
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(10),
+              color: AppColors.primary.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: const Icon(
-              Icons.directions_car_rounded,
+              Icons.directions_car_filled_rounded,
               color: AppColors.primary,
-              size: 20,
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: DropdownButton<String>(
-              value: dropdownValue,
-              isExpanded: true,
-              underline: const SizedBox.shrink(),
-              items: activeVehicles.map((vehicle) {
-                final displayName = vehicle.plateNumber != null
-                    ? '${vehicle.name} • ${vehicle.plateNumber}'
-                    : vehicle.name;
-                return DropdownMenuItem(
-                  value: vehicle.id,
-                  child: Text(
-                    displayName,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Vehicle Logbook',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
                   ),
-                );
-              }).toList(),
-              onChanged: (vehicleId) {
-                if (vehicleId != null) {
-                  provider.setSelectedVehicle(vehicleId);
-                }
-              },
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  vehicleName,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurface.withValues(alpha: 0.62),
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
+          _HeaderAction(
+            icon: Icons.insights_rounded,
+            onTap: onOpenStats,
+          ),
           const SizedBox(width: 8),
-          IconButton(
-            icon: Icon(
-              Icons.settings_rounded,
-              color: colorScheme.onSurface.withOpacity(0.6),
-              size: 20,
-            ),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const VehiclesScreen(),
-                ),
-              );
-            },
-            tooltip: 'Manage Vehicles',
+          _HeaderAction(
+            icon: Icons.settings_rounded,
+            onTap: onOpenSettings,
           ),
         ],
       ),
@@ -1087,27 +385,1200 @@ class _VehicleSelector extends StatelessWidget {
   }
 }
 
-class _DotPatternPainter extends CustomPainter {
-  final Color dotColor;
-  final double spacing;
+class _HeaderAction extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
 
-  const _DotPatternPainter({
-    required this.dotColor,
-    required this.spacing,
+  const _HeaderAction({
+    required this.icon,
+    required this.onTap,
   });
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = dotColor;
-    for (double y = 0; y < size.height; y += spacing) {
-      for (double x = 0; x < size.width; x += spacing) {
-        canvas.drawCircle(Offset(x, y), 0.8, paint);
-      }
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    return IconButton(
+      onPressed: onTap,
+      icon: Icon(icon, size: 20),
+      style: IconButton.styleFrom(
+        backgroundColor: isDark ? AppColors.surfaceDarkElevated : Colors.white,
+        foregroundColor: theme.colorScheme.onSurface,
+        side: BorderSide(
+          color: isDark ? AppColors.outlineDark : AppColors.outlineLight,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+      ),
+    );
+  }
+}
+
+class _VehicleSwitcher extends StatelessWidget {
+  final List<Vehicle> vehicles;
+  final String selectedVehicleId;
+  final ValueChanged<String> onSelected;
+  final VoidCallback onManage;
+
+  const _VehicleSwitcher({
+    required this.vehicles,
+    required this.selectedVehicleId,
+    required this.onSelected,
+    required this.onManage,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 42,
+      child: Row(
+        children: [
+          Expanded(
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: vehicles.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final vehicle = vehicles[index];
+                final isSelected = vehicle.id == selectedVehicleId;
+                final label = vehicle.plateNumber == null
+                    ? vehicle.name
+                    : '${vehicle.name}  ${vehicle.plateNumber}';
+                return ChoiceChip(
+                  selected: isSelected,
+                  showCheckmark: false,
+                  avatar: Icon(
+                    Icons.directions_car_rounded,
+                    size: 18,
+                    color: isSelected ? Colors.white : AppColors.primary,
+                  ),
+                  label: Text(label),
+                  onSelected: (_) => onSelected(vehicle.id),
+                  selectedColor: AppColors.primary,
+                  labelStyle: TextStyle(
+                    color: isSelected
+                        ? Colors.white
+                        : Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: onManage,
+            icon: const Icon(Icons.tune_rounded, size: 20),
+            style: IconButton.styleFrom(
+              backgroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.surfaceDarkElevated
+                  : Colors.white,
+              side: BorderSide(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.outlineDark
+                    : AppColors.outlineLight,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CareStatusPanel extends StatelessWidget {
+  final Map<String, dynamic> overview;
+  final double currentOdometer;
+  final int totalEntries;
+  final double averageMileage;
+  final VoidCallback onLogService;
+  final VoidCallback onLogFuel;
+  final VoidCallback onOpenMaintenance;
+
+  const _CareStatusPanel({
+    required this.overview,
+    required this.currentOdometer,
+    required this.totalEntries,
+    required this.averageMileage,
+    required this.onLogService,
+    required this.onLogFuel,
+    required this.onOpenMaintenance,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final overdueCount = overview['overdueCount'] as int;
+    final dueSoonCount = overview['dueSoonCount'] as int;
+    final latestServiceDate = overview['latestServiceDate'] as DateTime?;
+    final attentionCount = overdueCount + dueSoonCount;
+    final statusColor = overdueCount > 0
+        ? const Color(0xFFEF4444)
+        : dueSoonCount > 0
+            ? AppColors.accentAmber
+            : AppColors.primary;
+    final statusTitle = overdueCount > 0
+        ? 'Needs attention'
+        : dueSoonCount > 0
+            ? 'Service coming up'
+            : 'Ready to drive';
+    final statusDetail = overdueCount > 0
+        ? '$overdueCount overdue item${overdueCount == 1 ? '' : 's'}'
+        : dueSoonCount > 0
+            ? '$dueSoonCount item${dueSoonCount == 1 ? '' : 's'} due soon'
+            : latestServiceDate == null
+                ? 'No service history yet'
+                : 'Last service ${DateFormat('MMM d').format(latestServiceDate)}';
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: theme.brightness == Brightness.dark
+            ? AppColors.surfaceDark
+            : Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: theme.brightness == Brightness.dark
+              ? AppColors.outlineDark
+              : AppColors.outlineLight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.28 : 0.07,
+            ),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                height: 44,
+                width: 44,
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  Icons.verified_rounded,
+                  color: statusColor,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      statusTitle,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      statusDetail,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.64),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: onOpenMaintenance,
+                icon: const Icon(Icons.chevron_right_rounded),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: _CareMetric(
+                  label: 'Odometer',
+                  value: '${currentOdometer.toStringAsFixed(0)} km',
+                ),
+              ),
+              Expanded(
+                child: _CareMetric(
+                  label: 'Open items',
+                  value: attentionCount.toString(),
+                ),
+              ),
+              Expanded(
+                child: _CareMetric(
+                  label: 'Log entries',
+                  value: totalEntries.toString(),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            averageMileage > 0
+                ? 'Fuel average: ${averageMileage.toStringAsFixed(1)} km/L'
+                : 'Fuel average appears after two fuel logs',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.58),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: onLogService,
+                  icon: const Icon(Icons.build_rounded, size: 18),
+                  label: const Text('Service'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onLogFuel,
+                  icon: const Icon(Icons.local_gas_station_rounded, size: 18),
+                  label: const Text('Fuel'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CareMetric extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _CareMetric({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.54),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+}
+
+class _NextStepsRow extends StatelessWidget {
+  final Map<String, dynamic> overview;
+  final Map<String, dynamic>? forecast;
+  final String currency;
+  final VoidCallback onOpenMaintenance;
+
+  const _NextStepsRow({
+    required this.overview,
+    required this.forecast,
+    required this.currency,
+    required this.onOpenMaintenance,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final dueItems =
+        (overview['dueItems'] as List<dynamic>).cast<Map<String, dynamic>>();
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final narrow = constraints.maxWidth < 620;
+        final maintenanceCard = _MaintenanceNextCard(
+          dueItems: dueItems,
+          onTap: onOpenMaintenance,
+        );
+        final fuelCard = _FuelNextCard(
+          forecast: forecast,
+          currency: currency,
+        );
+
+        if (narrow) {
+          return Column(
+            children: [
+              maintenanceCard,
+              const SizedBox(height: 10),
+              fuelCard,
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(child: maintenanceCard),
+            const SizedBox(width: 10),
+            Expanded(child: fuelCard),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _MaintenanceNextCard extends StatelessWidget {
+  final List<Map<String, dynamic>> dueItems;
+  final VoidCallback onTap;
+
+  const _MaintenanceNextCard({
+    required this.dueItems,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasDueItem = dueItems.isNotEmpty;
+    final record =
+        hasDueItem ? dueItems.first['record'] as MaintenanceRecord : null;
+    final status = hasDueItem
+        ? (dueItems.first['dueStatus'] as Map<String, dynamic>)['status']
+            as String
+        : 'on_track';
+    final color = status == 'overdue'
+        ? const Color(0xFFEF4444)
+        : status == 'due_soon'
+            ? AppColors.accentAmber
+            : AppColors.primary;
+
+    return _SignalCard(
+      icon: Icons.build_rounded,
+      color: color,
+      title: hasDueItem ? record!.serviceType : 'Maintenance',
+      value: hasDueItem
+          ? status == 'overdue'
+              ? 'Overdue'
+              : 'Due soon'
+          : 'No open items',
+      detail: hasDueItem
+          ? dueItems.length == 1
+              ? 'Check service plan'
+              : '${dueItems.length} service items need review'
+          : 'Service history is clear',
+      onTap: onTap,
+    );
+  }
+}
+
+class _FuelNextCard extends StatelessWidget {
+  final Map<String, dynamic>? forecast;
+  final String currency;
+
+  const _FuelNextCard({
+    required this.forecast,
+    required this.currency,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final nextForecast = forecast;
+    if (nextForecast == null) {
+      return const _SignalCard(
+        icon: Icons.local_gas_station_rounded,
+        color: AppColors.accentBlue,
+        title: 'Fuel',
+        value: 'Learning pattern',
+        detail: 'Add another fuel log for refill timing',
+      );
+    }
+
+    final daysUntilRefill = nextForecast['daysUntilRefill'] as int;
+    final expectedCost = (nextForecast['expectedCost'] as num).toDouble();
+    final status = nextForecast['status'] as String;
+    final color = status == 'overdue'
+        ? const Color(0xFFEF4444)
+        : status == 'soon'
+            ? AppColors.accentAmber
+            : AppColors.accentBlue;
+    final value = daysUntilRefill < 0
+        ? '${daysUntilRefill.abs()}d overdue'
+        : daysUntilRefill == 0
+            ? 'Due today'
+            : 'In $daysUntilRefill d';
+
+    return _SignalCard(
+      icon: Icons.local_gas_station_rounded,
+      color: color,
+      title: 'Fuel',
+      value: value,
+      detail:
+          'Expected $currency${CurrencyUtils.formatAmount(expectedCost, currency)}',
+    );
+  }
+}
+
+class _SignalCard extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String value;
+  final String detail;
+  final VoidCallback? onTap;
+
+  const _SignalCard({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.value,
+    required this.detail,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    return Material(
+      color: isDark ? AppColors.surfaceDark : Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isDark ? AppColors.outlineDark : AppColors.outlineLight,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                height: 38,
+                width: 38,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.56),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      value,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      detail,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.58),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String title;
+  final String actionLabel;
+  final VoidCallback onAction;
+
+  const _SectionTitle({
+    required this.title,
+    required this.actionLabel,
+    required this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        TextButton(
+          onPressed: onAction,
+          child: Text(actionLabel),
+        ),
+      ],
+    );
+  }
+}
+
+class _TimelineCard extends StatelessWidget {
+  final _LogEntry entry;
+  final RecordsProvider provider;
+  final ValueChanged<FillRecord> onEditFuel;
+  final ValueChanged<MaintenanceRecord> onEditMaintenance;
+
+  const _TimelineCard({
+    required this.entry,
+    required this.provider,
+    required this.onEditFuel,
+    required this.onEditMaintenance,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    switch (entry.type) {
+      case _LogEntryType.maintenance:
+        return _MaintenanceTimelineCard(
+          record: entry.maintenanceRecord!,
+          provider: provider,
+          onTap: () => onEditMaintenance(entry.maintenanceRecord!),
+        );
+      case _LogEntryType.fuel:
+        return _FuelTimelineCard(
+          record: entry.fuelRecord!,
+          provider: provider,
+          onTap: () => onEditFuel(entry.fuelRecord!),
+        );
+    }
+  }
+}
+
+class _MaintenanceTimelineCard extends StatelessWidget {
+  final MaintenanceRecord record;
+  final RecordsProvider provider;
+  final VoidCallback onTap;
+
+  const _MaintenanceTimelineCard({
+    required this.record,
+    required this.provider,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dueStatus = provider.getMaintenanceDueStatus(record);
+    final status = dueStatus['status'] as String;
+    final color = _maintenanceColor(status);
+    final statusLabel = _maintenanceLabel(status);
+
+    return _ActivityShell(
+      accent: color,
+      icon: Icons.build_circle_rounded,
+      onTap: onTap,
+      header: _formatDate(record.serviceDate),
+      title: record.serviceType,
+      badge: statusLabel,
+      badgeColor: color,
+      children: [
+        Text(
+          '${_categoryLabel(record.category)} at ${record.odometerKm.toStringAsFixed(0)} km',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.66),
+          ),
+        ),
+        if (record.cost > 0) ...[
+          const SizedBox(height: 8),
+          _InlineMeta(
+            icon: Icons.payments_rounded,
+            text:
+                '${provider.currency}${CurrencyUtils.formatAmount(record.cost, provider.currency)}',
+          ),
+        ],
+        if (record.nextDueDate != null || record.nextDueOdometerKm != null) ...[
+          const SizedBox(height: 8),
+          _InlineMeta(
+            icon: Icons.event_repeat_rounded,
+            text: _nextDueText(record),
+          ),
+        ],
+        if (record.notes.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            record.notes,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.62),
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Color _maintenanceColor(String status) {
+    switch (status) {
+      case 'overdue':
+        return const Color(0xFFEF4444);
+      case 'due_soon':
+        return AppColors.accentAmber;
+      case 'on_track':
+        return AppColors.primary;
+      default:
+        return AppColors.accentBlue;
     }
   }
 
-  @override
-  bool shouldRepaint(covariant _DotPatternPainter oldDelegate) {
-    return oldDelegate.dotColor != dotColor || oldDelegate.spacing != spacing;
+  String _maintenanceLabel(String status) {
+    switch (status) {
+      case 'overdue':
+        return 'Overdue';
+      case 'due_soon':
+        return 'Due soon';
+      case 'on_track':
+        return 'Scheduled';
+      default:
+        return 'Done';
+    }
   }
+}
+
+class _FuelTimelineCard extends StatelessWidget {
+  final FillRecord record;
+  final RecordsProvider provider;
+  final VoidCallback onTap;
+
+  const _FuelTimelineCard({
+    required this.record,
+    required this.provider,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final stats = provider.getRecordStats(record);
+    final isFirstRecord = stats['isFirstRecord'] as bool;
+    final mileage = stats['mileage'] as double;
+    final fuelLiters = stats['fuelLiters'] as double;
+    final fuelTypeName = stats['fuelTypeName'] as String? ?? 'Fuel';
+    final efficiency = isFirstRecord
+        ? 'Baseline reading'
+        : '${mileage.toStringAsFixed(1)} km/L';
+
+    return _ActivityShell(
+      accent: AppColors.accentBlue,
+      icon: Icons.local_gas_station_rounded,
+      onTap: onTap,
+      header: _formatDate(record.date),
+      title: 'Fuel',
+      badge: fuelTypeName,
+      badgeColor: AppColors.accentBlue,
+      children: [
+        Text(
+          '${record.odometerKm.toStringAsFixed(0)} km',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.66),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 10,
+          runSpacing: 6,
+          children: [
+            _InlineMeta(
+              icon: Icons.payments_rounded,
+              text:
+                  '${provider.currency}${CurrencyUtils.formatAmount(record.cost, provider.currency)}',
+            ),
+            _InlineMeta(
+              icon: Icons.water_drop_rounded,
+              text: '${fuelLiters.toStringAsFixed(1)} L',
+            ),
+            _InlineMeta(
+              icon: Icons.speed_rounded,
+              text: efficiency,
+            ),
+          ],
+        ),
+        if (record.notes.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            record.notes,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.62),
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ActivityShell extends StatelessWidget {
+  final Color accent;
+  final IconData icon;
+  final VoidCallback onTap;
+  final String header;
+  final String title;
+  final String badge;
+  final Color badgeColor;
+  final List<Widget> children;
+
+  const _ActivityShell({
+    required this.accent,
+    required this.icon,
+    required this.onTap,
+    required this.header,
+    required this.title,
+    required this.badge,
+    required this.badgeColor,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    return Material(
+      color: isDark ? AppColors.surfaceDark : Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isDark ? AppColors.outlineDark : AppColors.outlineLight,
+            ),
+          ),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  width: 5,
+                  decoration: BoxDecoration(
+                    color: accent,
+                    borderRadius: const BorderRadius.horizontal(
+                      left: Radius.circular(18),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          height: 38,
+                          width: 38,
+                          decoration: BoxDecoration(
+                            color: accent.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(icon, color: accent, size: 21),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          header,
+                                          style: theme.textTheme.labelSmall
+                                              ?.copyWith(
+                                            color: theme.colorScheme.onSurface
+                                                .withValues(alpha: 0.52),
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          title,
+                                          style: theme.textTheme.titleMedium
+                                              ?.copyWith(
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 9,
+                                      vertical: 5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: badgeColor.withValues(alpha: 0.14),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      badge,
+                                      style:
+                                          theme.textTheme.labelSmall?.copyWith(
+                                        color: badgeColor,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              ...children,
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InlineMeta extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _InlineMeta({
+    required this.icon,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 15, color: AppColors.primary),
+        const SizedBox(width: 5),
+        Text(
+          text,
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _EmptyTimeline extends StatelessWidget {
+  final VoidCallback onLogService;
+  final VoidCallback onLogFuel;
+
+  const _EmptyTimeline({
+    required this.onLogService,
+    required this.onLogFuel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(28),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            height: 76,
+            width: 76,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: const Icon(
+              Icons.fact_check_rounded,
+              color: AppColors.primary,
+              size: 38,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Start the vehicle logbook',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Capture maintenance first, then add fuel whenever it matters.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.62),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 18),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              FilledButton.icon(
+                onPressed: onLogService,
+                icon: const Icon(Icons.build_rounded),
+                label: const Text('Service'),
+              ),
+              const SizedBox(width: 10),
+              OutlinedButton.icon(
+                onPressed: onLogFuel,
+                icon: const Icon(Icons.local_gas_station_rounded),
+                label: const Text('Fuel'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NoVehicleHome extends StatelessWidget {
+  final VoidCallback onAddVehicle;
+  final VoidCallback onSettings;
+
+  const _NoVehicleHome({
+    required this.onAddVehicle,
+    required this.onSettings,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Vehicle Logbook',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: onSettings,
+                icon: const Icon(Icons.settings_rounded),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Center(
+            child: Column(
+              children: [
+                Container(
+                  height: 88,
+                  width: 88,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                  child: const Icon(
+                    Icons.directions_car_rounded,
+                    color: AppColors.primary,
+                    size: 44,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'Add a vehicle first',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Every service, repair, reminder, and fuel log belongs to a vehicle.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.62),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                FilledButton.icon(
+                  onPressed: onAddVehicle,
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Add Vehicle'),
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
+        ],
+      ),
+    );
+  }
+}
+
+class _SheetAction extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _SheetAction({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    return Material(
+      color: isDark ? AppColors.surfaceDark : AppColors.backgroundLight,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                height: 42,
+                width: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Icon(icon, color: AppColors.primary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.58),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _formatDate(DateTime date) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final value = DateTime(date.year, date.month, date.day);
+  final dayDifference = today.difference(value).inDays;
+  if (dayDifference == 0) {
+    return 'Today';
+  }
+  if (dayDifference == 1) {
+    return 'Yesterday';
+  }
+  return DateFormat('MMM d, yyyy').format(date);
+}
+
+String _categoryLabel(String category) {
+  switch (category) {
+    case 'oil_change':
+      return 'Oil change';
+    case 'tire':
+      return 'Tire / wheel';
+    case 'brake':
+      return 'Brake service';
+    case 'battery':
+      return 'Battery';
+    case 'engine':
+      return 'Engine';
+    case 'insurance':
+      return 'Insurance / registration';
+    case 'other':
+      return 'Other';
+    default:
+      return 'General service';
+  }
+}
+
+String _nextDueText(MaintenanceRecord record) {
+  final parts = <String>[];
+  if (record.nextDueDate != null) {
+    parts.add('Due ${DateFormat('MMM d, yyyy').format(record.nextDueDate!)}');
+  }
+  if (record.nextDueOdometerKm != null) {
+    parts.add('${record.nextDueOdometerKm!.toStringAsFixed(0)} km');
+  }
+  return parts.join(' / ');
 }

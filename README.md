@@ -1,34 +1,37 @@
-# Petrol Log
+# Vehicle Logbook
 
-Petrol Log is a polished Flutter app for tracking fuel fills, cost trends, and mileage performance.
-It is designed for drivers who want fast daily logging and clear long-term insights.
+Vehicle Logbook is a Flutter app for tracking vehicle maintenance, service reminders, fuel activity, mileage, and cost history.
+It is designed around a vehicle-first workflow: pick a vehicle, log what happened, and review the full service and fuel timeline in one place.
 
 ## Product Overview
 
-Petrol Log helps you answer three practical questions:
+Vehicle Logbook helps answer practical ownership questions:
 
-- How much am I spending on fuel?
+- What service, repair, or inspection was done last?
+- What maintenance is overdue or coming up?
+- How much am I spending on service and fuel?
 - How efficient is my vehicle over time?
 - When will I likely need to refuel next?
 
-The app stores your records locally, calculates analytics automatically, and presents everything in a clean dashboard-first interface.
+The app stores records locally, calculates analytics automatically, and keeps maintenance status visible on the home dashboard.
 
 ## Core Features
 
-- Quick fuel entry
-- Add date/time, odometer, total cost, and notes for every fill.
+- Vehicle logbook dashboard
+- Shows selected vehicle, odometer, open maintenance items, total entries, next service signals, fuel forecast, and recent activity.
 
-- Live volume calculation
-- Automatically estimates fuel volume from your configured price per liter.
-
-- Smart history cards
-- Shows efficiency, distance since previous fill, interval days, and cost per record.
-
-- Vehicle service & maintenance management
-- Log maintenance events (oil change, brakes, tire work, insurance, and more) per vehicle.
+- Service and maintenance logging
+- Log oil changes, brakes, tires, battery work, insurance, inspections, repairs, and other ownership events.
 - Set next due odometer/date and track `on_track`, `due_soon`, and `overdue` service states.
 
-- Refuel Radar (predictive)
+- Fuel logging
+- Add date/time, odometer, fuel type, total cost, and notes for every fuel purchase.
+- Automatically estimates fuel volume from configured price per liter.
+
+- Combined activity timeline
+- Shows service entries and fuel logs together so the vehicle history reads chronologically.
+
+- Refuel forecast
 - Forecasts likely next refill date, expected cycle length, projected odometer, and expected spend.
 - Includes confidence and urgency states (`on_track`, `soon`, `overdue`).
 
@@ -36,11 +39,11 @@ The app stores your records locally, calculates analytics automatically, and pre
 - Total fills, fuel volume, distance, duration, best/worst efficiency, average fill cost, and monthly spending trends.
 
 - Data import
-- CSV import flow to migrate historical records.
+- CSV import flow to migrate historical fuel records.
 - Supports common date formats (for example: `yyyy-MM-dd`, `dd/MM/yyyy`, `MM/dd/yyyy`).
 
 - Personalization
-- Fuel price, currency, and theme mode (`Light`, `Dark`, `System`).
+- Fuel price, fuel types, currency, vehicles, and theme mode (`Light`, `Dark`, `System`).
 
 ## Tech Stack
 
@@ -127,6 +130,6 @@ python3 tools/generate_app_store_assets.py
 
 ## Current Status
 
-- Product features implemented for daily fuel tracking, analytics, and prediction.
-- Unit tests are available for model, provider, and import logic.
+- Product workflow is centered on vehicle maintenance logging, with fuel logging as one activity type.
+- Unit tests are available for model, provider, utility, and import logic.
 - iOS release validation succeeds, pending non-placeholder bundle identifier configuration.

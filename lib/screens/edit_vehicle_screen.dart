@@ -130,7 +130,10 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
     final provider = context.read<RecordsProvider>();
     final highestOdometer = provider.getHighestOdometerForVehicle(widget.vehicle.id);
 
-    return Scaffold(
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      behavior: HitTestBehavior.translucent,
+      child: Scaffold(
       backgroundColor: isDark ? AppColors.backgroundDark : null,
       appBar: AppBar(
         leading: IconButton(
@@ -363,7 +366,8 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }
 

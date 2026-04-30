@@ -374,7 +374,7 @@ def render_shot(
     icon_x = chip_x + max(10, chip_h // 6)
     canvas.paste(icon_resized, (icon_x, icon_y))
 
-    badge_text = "PETROL LOG"
+    badge_text = "VEHICLE LOG"
     label_x = icon_x + icon_edge + max(12, width // 120)
     label_y = chip_y + (chip_h - (draw.textbbox((0, 0), badge_text, font=badge_font)[3])) // 2
     draw.text((label_x, label_y), badge_text, font=badge_font, fill=(8, 40, 40, 240))
@@ -512,49 +512,50 @@ def generate_screenshots(master_icon: Image.Image) -> None:
 
 
 def write_metadata_files() -> None:
-    listing = """# App Store Listing Draft - Petrol Log
+    listing = """# App Store Listing Draft - Vehicle Logbook
 
 ## App Name
-Petrol Log
+Vehicle Logbook
 
 ## Subtitle (<= 30 chars)
-Fuel Tracker and Mileage
+Maintenance and Fuel Log
 
 ## Promotional Text (<= 170 chars)
-Track every fuel stop in seconds and keep your mileage, spend, and refill rhythm visible at all times with a clean interface built for daily driving.
+Keep service, repairs, reminders, fuel, mileage, and spend in one clear vehicle history built for everyday ownership.
 
 ## Keywords (<= 100 chars)
-fuel tracker,mileage,gas log,car expenses,odometer,petrol,cost tracking,refill
+vehicle maintenance,service log,car repair,fuel tracker,mileage,odometer,expenses,reminders
 
 ## Description
-Petrol Log is a minimal fuel tracker for drivers who care about clean records and accurate insights.
+Vehicle Logbook is a focused maintenance and fuel tracker for drivers who care about clean records and useful ownership history.
 
 What you can do:
-- Log each fill with date, odometer, cost, and notes.
-- Review efficiency and refill intervals automatically.
+- Log services, repairs, inspections, reminders, and fuel purchases.
+- Review a combined vehicle timeline with maintenance status front and center.
+- Set next due odometer/date for recurring service work.
 - Analyze monthly fuel spending and mileage trends.
 - Use Refuel Radar to estimate your next refill window and projected cost.
 - Keep everything in your preferred currency and theme.
 
-Built for speed, clarity, and long-term tracking.
+Built for clarity, routine maintenance, and long-term vehicle ownership.
 """
 
     captions = """# Screenshot Caption Set
 
-1. Log Fuel Stops In Seconds
-Capture odometer, cost, and notes in one focused flow.
+1. Start With Vehicle Care
+See service status, odometer, open items, and recent activity together.
 
-2. See Efficiency At A Glance
-Instant analytics for mileage, spend trends, and refill rhythm.
+2. Log Service Or Fuel
+Capture maintenance, repairs, inspections, and fuel purchases in focused flows.
 
-3. Never Miss A Refill
-Refuel Radar projects your next stop and expected spend.
+3. Track What Is Due
+Set due dates or odometer targets and spot overdue service before it slips.
 
-4. Track Every Expense Clearly
-History cards surface cost, volume, and interval with zero clutter.
+4. Keep Fuel As One Signal
+Review efficiency, volume, refill rhythm, and fuel spend beside the rest of the vehicle history.
 
 5. Tune It To Your Region
-Set fuel price, currency, and appearance in a few taps.
+Set vehicles, fuel types, currency, and appearance in a few taps.
 """
 
     readme = """# Generated Asset Pack
@@ -634,7 +635,7 @@ def generate_icon_files() -> Image.Image:
     label_font = load_font(58, bold=True)
     subtitle_font = load_font(28, bold=False)
     draw = ImageDraw.Draw(preview)
-    title = "Petrol Log Icon"
+    title = "Vehicle Logbook Icon"
     subtitle = "Source: user-provided brand icon"
     tbox = draw.textbbox((0, 0), title, font=label_font)
     sbox = draw.textbbox((0, 0), subtitle, font=subtitle_font)
