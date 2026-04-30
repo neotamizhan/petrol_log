@@ -110,7 +110,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      behavior: HitTestBehavior.translucent,
+      child: Scaffold(
       backgroundColor: isDark ? AppColors.backgroundDark : null,
       appBar: AppBar(
         leading: IconButton(
@@ -304,7 +307,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }
 
