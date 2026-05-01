@@ -781,6 +781,24 @@ class RecordsProvider with ChangeNotifier {
     final today = DateTime(reference.year, reference.month, reference.day);
     final currentOdometer =
         getVehicleById(record.vehicleId)?.currentOdometer ?? record.odometerKm;
+    final isSuperseded = _isSupersededMaintenanceRecord(record);
+
+    if (!record.hasDueTarget || isSuperseded) {
+      return {
+        'status': 'completed',
+        'currentOdometerKm': currentOdometer,
+        'kmRemaining': null,
+        'daysRemaining': null,
+        'isOverdue': false,
+        'isDueSoon': false,
+        'overdueByKm': false,
+        'overdueByDate': false,
+        'dueSoonByKm': false,
+        'dueSoonByDate': false,
+        'hasDueTarget': record.hasDueTarget,
+        'isSuperseded': isSuperseded,
+      };
+    }
 
     double? kmRemaining;
     bool overdueByKm = false;
@@ -827,7 +845,23 @@ class RecordsProvider with ChangeNotifier {
       'dueSoonByKm': dueSoonByKm,
       'dueSoonByDate': dueSoonByDate,
       'hasDueTarget': record.hasDueTarget,
+      'isSuperseded': isSuperseded,
     };
+  }
+
+  bool _isSupersededMaintenanceRecord(MaintenanceRecord record) {
+    return _maintenanceRecords.any((candidate) {
+      if (candidate.id == record.id) {
+        return false;
+      }
+      if (candidate.scheduleKey != record.scheduleKey) {
+        return false;
+      }
+
+      return candidate.serviceDate.isAfter(record.serviceDate) ||
+          (candidate.serviceDate.isAtSameMomentAs(record.serviceDate) &&
+              candidate.createdAt.isAfter(record.createdAt));
+    });
   }
 
   List<MaintenanceRecord> _latestScheduledMaintenance(
@@ -845,10 +879,11 @@ class RecordsProvider with ChangeNotifier {
     final latest = <MaintenanceRecord>[];
 
     for (final record in sorted) {
-      if (!record.hasDueTarget) {
+      if (!seenScheduleKeys.add(record.scheduleKey)) {
         continue;
       }
-      if (seenScheduleKeys.add(record.scheduleKey)) {
+
+      if (record.hasDueTarget) {
         latest.add(record);
       }
     }

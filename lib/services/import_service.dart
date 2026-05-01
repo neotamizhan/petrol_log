@@ -12,7 +12,7 @@ class ImportService {
   Future<ImportResult> importFromCsv() async {
     try {
       // Pick CSV file
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['csv'],
         withData: true,
@@ -37,8 +37,7 @@ class ImportService {
 
       // Parse CSV
       final csvString = utf8.decode(file.bytes!);
-      final List<List<dynamic>> rows =
-          const CsvToListConverter().convert(csvString);
+      final List<List<dynamic>> rows = const CsvDecoder().convert(csvString);
 
       if (rows.isEmpty) {
         return ImportResult(

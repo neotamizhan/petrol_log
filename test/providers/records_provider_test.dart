@@ -340,6 +340,125 @@ void main() {
       expect(overview['needsAttention'], isTrue);
     });
 
+    test('newer maintenance entry completes older overdue schedule', () async {
+      final vehicle = Vehicle(
+        id: 'v1',
+        name: 'Civic',
+        currentOdometer: 15500,
+        createdAt: DateTime(2024, 1, 1),
+      );
+      final oldMaintenance = MaintenanceRecord(
+        id: 'm1',
+        vehicleId: 'v1',
+        serviceType: 'Oil Change',
+        category: 'oil_change',
+        serviceDate: DateTime(2024, 1, 1),
+        odometerKm: 12000,
+        cost: 1500,
+        nextDueOdometerKm: 15000,
+        nextDueDate: DateTime(2024, 2, 1),
+        createdAt: DateTime(2024, 1, 1),
+      );
+      final newerMaintenance = MaintenanceRecord(
+        id: 'm2',
+        vehicleId: 'v1',
+        serviceType: 'Oil Change',
+        category: 'oil_change',
+        serviceDate: DateTime(2024, 3, 5),
+        odometerKm: 15500,
+        cost: 1700,
+        createdAt: DateTime(2024, 3, 5),
+      );
+      stubStorage(
+        vehicles: [vehicle],
+        maintenanceRecords: [oldMaintenance, newerMaintenance],
+      );
+
+      provider = RecordsProvider(mockStorageService);
+      await provider.init();
+
+      final oldStatus = provider.getMaintenanceDueStatus(
+        oldMaintenance,
+        now: DateTime(2024, 3, 10),
+      );
+      final overview = provider.getMaintenanceOverview(
+        vehicleId: 'v1',
+        now: DateTime(2024, 3, 10),
+      );
+
+      expect(oldStatus['status'], 'completed');
+      expect(oldStatus['isOverdue'], isFalse);
+      expect(oldStatus['isSuperseded'], isTrue);
+      expect(overview['scheduledItems'], 0);
+      expect(overview['overdueCount'], 0);
+      expect(overview['needsAttention'], isFalse);
+    });
+
+    test('maintenance overview only counts newest schedule target per service',
+        () async {
+      final vehicle = Vehicle(
+        id: 'v1',
+        name: 'Civic',
+        currentOdometer: 15500,
+        createdAt: DateTime(2024, 1, 1),
+      );
+      final oldMaintenance = MaintenanceRecord(
+        id: 'm1',
+        vehicleId: 'v1',
+        serviceType: 'Oil Change',
+        category: 'oil_change',
+        serviceDate: DateTime(2024, 1, 1),
+        odometerKm: 12000,
+        cost: 1500,
+        nextDueOdometerKm: 15000,
+        nextDueDate: DateTime(2024, 2, 1),
+        createdAt: DateTime(2024, 1, 1),
+      );
+      final newerMaintenance = MaintenanceRecord(
+        id: 'm2',
+        vehicleId: 'v1',
+        serviceType: 'Oil Change',
+        category: 'oil_change',
+        serviceDate: DateTime(2024, 3, 5),
+        odometerKm: 15500,
+        cost: 1700,
+        nextDueOdometerKm: 20000,
+        nextDueDate: DateTime(2024, 9, 1),
+        createdAt: DateTime(2024, 3, 5),
+      );
+      stubStorage(
+        vehicles: [vehicle],
+        maintenanceRecords: [oldMaintenance, newerMaintenance],
+      );
+
+      provider = RecordsProvider(mockStorageService);
+      await provider.init();
+
+      final overview = provider.getMaintenanceOverview(
+        vehicleId: 'v1',
+        now: DateTime(2024, 3, 10),
+      );
+      final dueItems =
+          (overview['dueItems'] as List<dynamic>).cast<Map<String, dynamic>>();
+
+      expect(overview['scheduledItems'], 1);
+      expect(overview['overdueCount'], 0);
+      expect(overview['dueSoonCount'], 0);
+      expect(overview['onTrackCount'], 1);
+      expect(dueItems, isEmpty);
+      expect(
+        provider.getMaintenanceDueStatus(oldMaintenance)['status'],
+        'completed',
+      );
+      expect(
+        provider.getMaintenanceDueStatus(
+          newerMaintenance,
+          now: DateTime(2024, 3, 10),
+        )['status'],
+        'on_track',
+      );
+    });
+
     test('addMaintenanceRecord updates vehicle odometer when higher', () async {
       final vehicle = Vehicle(
         id: 'v1',

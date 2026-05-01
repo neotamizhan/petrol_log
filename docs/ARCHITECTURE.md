@@ -1,6 +1,6 @@
 # Vehicle Logbook – Technical Architecture
 
-> **Last updated:** 2026-04-30
+> **Last updated:** 2026-05-01
 > **Version:** 1.0.0+3
 > **Stack:** Flutter (Dart 3.0+) · Provider · SharedPreferences
 
@@ -110,8 +110,8 @@ C4Component
     Component(recordMgmt, "Fill Record Management", "addRecord / updateRecord / deleteRecord", "Maintains sorted list of FillRecords.\nUpdates vehicle odometer on add.")
     Component(fuelMgmt, "Fuel Type Management", "addFuelType / updateFuelType / deleteFuelType", "Manages available fuel types.\nSoft-deletes types that have records.")
     Component(vehicleMgmt, "Vehicle Management", "addVehicle / updateVehicle / deleteVehicle", "Manages vehicle registry.\nSoft-deletes vehicles with existing records.")
-    Component(mainMgmt, "Maintenance Management", "addMaintenanceRecord / updateMaintenanceRecord\n/ deleteMaintenanceRecord", "Manages maintenance event log.")
-    Component(analytics, "Analytics Engine", "getOverallStats / getRefillForecast\n/ getMaintenanceOverview / getMaintenanceDueStatus", "Pure computation over in-memory state.\nNo I/O. Returns Maps for UI consumption.")
+    Component(mainMgmt, "Maintenance Management", "addMaintenanceRecord / updateMaintenanceRecord\n/ deleteMaintenanceRecord", "Manages maintenance event log.\nNewer records supersede older records\nwith the same vehicle/service schedule.")
+    Component(analytics, "Analytics Engine", "getOverallStats / getRefillForecast\n/ getMaintenanceOverview / getMaintenanceDueStatus", "Pure computation over in-memory state.\nNo I/O. Returns Maps for UI consumption.\nMaintenance due status is evaluated only\nfor the newest record in each schedule.")
     Component(settings, "Settings Management", "setCurrency / setThemeMode / setFuelPrice", "Persists user preferences.")
     Component(sanitize, "Data Sanitizer", "_sanitizeFuelTypes / _sanitizeVehicles\n/ _normalizeRecordFuelTypes", "Ensures referential integrity after\nloading or migrations.")
   }
@@ -406,13 +406,16 @@ flowchart TD
 
 ### Maintenance Due Status (`getMaintenanceDueStatus`)
 
-Evaluated independently by odometer and date. The more urgent dimension wins.
+Maintenance schedules are keyed by vehicle and normalized service type. If a newer maintenance record exists for the same schedule, older records are treated as superseded history and return `completed` instead of recalculating overdue status from stale due targets.
+
+For the newest schedule record, odometer and date are evaluated independently. The more urgent dimension wins.
 
 | Condition | Status |
 |---|---|
+| Newer record exists for same vehicle/service schedule | `completed` |
+| No due target set | `completed` |
 | Past due odometer **or** past due date | `overdue` |
 | Within 500 km **or** within 14 days | `due_soon` |
-| No due target set | `on_track` |
 | Has target and not near | `on_track` |
 
 ---
@@ -485,7 +488,7 @@ petrol_log/
 │   │   ├── vehicle.dart                 # Vehicle entity
 │   │   └── maintenance_record.dart      # Service/maintenance event
 │   ├── providers/
-│   │   └── records_provider.dart        # Central state (1075 lines)
+│   │   └── records_provider.dart        # Central state (1110 lines)
 │   ├── services/
 │   │   ├── storage_service.dart         # SharedPreferences CRUD + migrations
 │   │   └── import_service.dart          # CSV import with file picker
@@ -533,6 +536,7 @@ petrol_log/
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-05-01 | 1.0.0+3 | Fixed maintenance due status so newer service entries supersede older overdue schedules. |
 | 2026-04-30 | 1.0.0+3 | Reframed the product as Vehicle Logbook with a maintenance-first home workflow, one Log Activity entry point, and a combined service/fuel timeline. |
 | 2026-02-21 | 1.0.0+3 | Fixed Mermaid syntax in “App Startup Sequence” by replacing a semicolon-delimited action label with parser-safe wording. |
 | 2026-02-21 | 1.0.0+3 | Fixed Mermaid C4 syntax in §4b and §4c by converting multiline `Component(...)` declarations to single-line statements and normalizing special symbols for parser compatibility. |
