@@ -12,6 +12,8 @@
 ## Launcher Icons Updated In Project
 - ios/Runner/Assets.xcassets/AppIcon.appiconset/*
 - android/app/src/main/res/mipmap-*/ic_launcher.png
+- macos/Runner/Assets.xcassets/AppIcon.appiconset/*
+- web/favicon.png
 - web/icons/Icon-*.png
 
 ## Notes

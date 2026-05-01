@@ -6,7 +6,7 @@ Outputs:
 - output/app_store/screenshots/*
 - output/app_store/metadata/*
 
-Also refreshes launcher icons used by iOS/Android/Web from the same master icon.
+Also refreshes launcher icons used by iOS/Android/macOS/Web from the same master icon.
 """
 
 from __future__ import annotations
@@ -40,6 +40,9 @@ WEB_ICON_PATHS = [
     ROOT / "web" / "icons" / "Icon-maskable-192.png",
     ROOT / "web" / "icons" / "Icon-maskable-512.png",
 ]
+WEB_FAVICON_PATH = ROOT / "web" / "favicon.png"
+MACOS_ICONSET_JSON = ROOT / "macos" / "Runner" / "Assets.xcassets" / "AppIcon.appiconset" / "Contents.json"
+MACOS_ICONSET_DIR = MACOS_ICONSET_JSON.parent
 LAUNCH_IMAGE_PATHS = {
     ROOT / "ios" / "Runner" / "Assets.xcassets" / "LaunchImage.imageset" / "LaunchImage.png": (414, 896),
     ROOT / "ios" / "Runner" / "Assets.xcassets" / "LaunchImage.imageset" / "LaunchImage@2x.png": (828, 1792),
@@ -273,11 +276,29 @@ def save_ios_icons(master: Image.Image) -> None:
 
 
 def save_android_and_web_icons(master: Image.Image) -> None:
-    for path in [*ANDROID_ICON_PATHS, *WEB_ICON_PATHS]:
+    for path in [*ANDROID_ICON_PATHS, *WEB_ICON_PATHS, WEB_FAVICON_PATH]:
         with Image.open(path) as target:
             size = target.size
+            mode = target.mode
         resized = master.resize(size, Image.Resampling.LANCZOS)
+        if mode == "RGBA":
+            resized = resized.convert("RGBA")
+        else:
+            resized = resized.convert("RGB")
         resized.save(path, format="PNG")
+
+
+def save_macos_icons(master: Image.Image) -> None:
+    data = json.loads(MACOS_ICONSET_JSON.read_text(encoding="utf-8"))
+    seen: set[str] = set()
+    for image_spec in data.get("images", []):
+        filename = image_spec.get("filename")
+        if not filename or filename in seen:
+            continue
+        size = parse_ios_icon_size(image_spec["size"], image_spec["scale"])
+        resized = master.convert("RGBA").resize((size, size), Image.Resampling.LANCZOS)
+        resized.save(MACOS_ICONSET_DIR / filename, format="PNG")
+        seen.add(filename)
 
 
 def save_launch_images(master: Image.Image, icon_with_alpha: Optional[Image.Image] = None) -> None:
@@ -572,6 +593,8 @@ Set vehicles, fuel types, currency, and appearance in a few taps.
 ## Launcher Icons Updated In Project
 - ios/Runner/Assets.xcassets/AppIcon.appiconset/*
 - android/app/src/main/res/mipmap-*/ic_launcher.png
+- macos/Runner/Assets.xcassets/AppIcon.appiconset/*
+- web/favicon.png
 - web/icons/Icon-*.png
 
 ## Notes
@@ -645,6 +668,7 @@ def generate_icon_files() -> Image.Image:
 
     save_ios_icons(master)
     save_android_and_web_icons(master)
+    save_macos_icons(master)
     save_launch_images(master, master_rgba)
     return master
 
