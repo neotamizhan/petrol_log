@@ -128,6 +128,19 @@ Regenerate assets:
 python3 tools/generate_app_store_assets.py
 ```
 
+## Product Website
+
+The public product website is a static GitHub Pages site under `docs/`.
+It includes the landing page plus app store review pages:
+
+- `docs/index.html`
+- `docs/privacy.html`
+- `docs/support.html`
+- `docs/terms.html`
+- `docs/data-control.html`
+
+To host it on GitHub Pages, configure the repository Pages source to serve the `docs/` folder from the default branch.
+
 ## Current Status
 
 - Product workflow is centered on vehicle maintenance logging, with fuel logging as one activity type.

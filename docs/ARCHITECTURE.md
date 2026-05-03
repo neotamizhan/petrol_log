@@ -1,6 +1,6 @@
 # Vehicle Logbook – Technical Architecture
 
-> **Last updated:** 2026-05-01
+> **Last updated:** 2026-05-03
 > **Version:** 1.0.0+3
 > **Stack:** Flutter (Dart 3.0+) · Provider · SharedPreferences
 
@@ -428,8 +428,9 @@ For the newest schedule record, odometer and date are evaluated independently. T
 | iOS | Supported (pending bundle ID) | `flutter build ipa --release --no-codesign` |
 | macOS | Supported | `flutter build macos --release` |
 | Web | Supported | `flutter build web --release` |
+| GitHub Pages product site | Supported | Static site served from `docs/` |
 
-All platforms share the same Dart codebase. Platform-specific folders (`android/`, `ios/`, `macos/`, `web/`) contain only native configuration.
+All app platforms share the same Dart codebase. Platform-specific folders (`android/`, `ios/`, `macos/`, `web/`) contain only native configuration. The public product website and store-review legal pages are static HTML/CSS under `docs/` for GitHub Pages hosting.
 
 ---
 
@@ -439,12 +440,12 @@ All platforms share the same Dart codebase. Platform-specific folders (`android/
 |---|---|---|
 | `provider` | ^6.1.1 | Reactive state management (ChangeNotifier) |
 | `shared_preferences` | ^2.2.2 | On-device key-value persistence |
-| `google_fonts` | ^6.1.0 | Space Grotesk typography |
-| `intl` | ^0.19.0 | Date/number formatting, localization |
-| `csv` | ^6.0.0 | CSV parsing for historical import |
-| `file_picker` | ^10.3.10 | Cross-platform file selection dialog |
+| `google_fonts` | ^8.1.0 | Space Grotesk typography |
+| `intl` | ^0.20.2 | Date/number formatting, localization |
+| `csv` | ^8.0.0 | CSV parsing for historical import |
+| `file_picker` | ^11.0.2 | Cross-platform file selection dialog |
 | `cupertino_icons` | ^1.0.6 | iOS-style icon set |
-| `flutter_lints` | ^3.0.1 | Dev: lint rules |
+| `flutter_lints` | ^6.0.0 | Dev: lint rules |
 | `mocktail` | ^1.0.4 | Dev: test mocking |
 
 No network packages. No analytics SDKs. No crash reporting SDKs.
@@ -522,6 +523,15 @@ petrol_log/
 ├── output/app_store/                   # Generated store assets
 ├── android/ ios/ macos/ web/           # Platform-specific native config
 ├── docs/
+│   ├── index.html                      # GitHub Pages product landing page
+│   ├── privacy.html                    # Public privacy policy URL
+│   ├── support.html                    # Public app support URL
+│   ├── terms.html                      # Terms of use
+│   ├── data-control.html               # Local data deletion / privacy choices
+│   ├── 404.html                        # GitHub Pages not-found page
+│   ├── robots.txt
+│   ├── sitemap.xml
+│   ├── assets/                         # Site CSS, app icon, store screenshots
 │   └── ARCHITECTURE.md                 # This file
 ├── pubspec.yaml
 ├── analysis_options.yaml
@@ -536,6 +546,7 @@ petrol_log/
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-05-03 | 1.0.0+3 | Added GitHub Pages product website with privacy, support, terms, and data-control pages for app store review. |
 | 2026-05-01 | 1.0.0+3 | Fixed maintenance due status so newer service entries supersede older overdue schedules. |
 | 2026-04-30 | 1.0.0+3 | Reframed the product as Vehicle Logbook with a maintenance-first home workflow, one Log Activity entry point, and a combined service/fuel timeline. |
 | 2026-02-21 | 1.0.0+3 | Fixed Mermaid syntax in “App Startup Sequence” by replacing a semicolon-delimited action label with parser-safe wording. |

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://neotamizhan.github.io/petrol_log/sitemap.xml

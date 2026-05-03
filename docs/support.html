@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Support - Vehicle Logbook</title>
+  <meta name="description" content="Support page for Vehicle Logbook. Get help with maintenance records, fuel logs, CSV import, and privacy questions.">
+  <link rel="canonical" href="https://neotamizhan.github.io/petrol_log/support.html">
+  <link rel="icon" href="assets/images/app-icon.png">
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <nav class="nav" aria-label="Primary">
+      <a class="brand" href="index.html" aria-label="Vehicle Logbook home">
+        <img src="assets/images/app-icon.png" alt="">
+        <span>Vehicle Logbook</span>
+      </a>
+      <div class="nav-links">
+        <a href="index.html#features">Features</a>
+        <a href="index.html#privacy">Privacy</a>
+        <a href="support.html" aria-current="page">Support</a>
+        <a href="privacy.html">Policy</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="page-hero">
+      <div class="container">
+        <p class="eyebrow">App support URL</p>
+        <h1>Support</h1>
+        <p>Help for Vehicle Logbook users, app store reviewers, and privacy questions.</p>
+        <div class="meta-row">
+          <span class="pill">Current app version: 1.0.0+3</span>
+          <span class="pill">Last updated: May 3, 2026</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div class="section-heading">
+          <h2>Contact</h2>
+          <p>For support requests, include enough context to reproduce the issue without sending sensitive information you do not want reviewed.</p>
+        </div>
+        <div class="contact-block">
+          <p>Email: <a href="mailto:neotamizhan@gmail.com?subject=Vehicle%20Logbook%20Support">neotamizhan@gmail.com</a></p>
+          <p>Helpful details include your app version, device model, operating system version, the screen where the problem happened, and a short description of what you expected.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section alt">
+      <div class="container">
+        <div class="section-heading">
+          <h2>Common help topics</h2>
+          <p>Most issues are tied to selected vehicle context, CSV formatting, or local device storage.</p>
+        </div>
+        <div class="support-grid">
+          <article class="support-card">
+            <h2>Records appear under the wrong vehicle</h2>
+            <p>Check the selected vehicle on the home screen before adding a record. Existing records stay associated with the vehicle selected when they were created.</p>
+          </article>
+          <article class="support-card">
+            <h2>CSV import fails</h2>
+            <p>Use a header row and include at least Date, Odometer, and Cost columns. Supported date formats include yyyy-MM-dd, dd/MM/yyyy, MM/dd/yyyy, and dd-MM-yyyy.</p>
+          </article>
+          <article class="support-card">
+            <h2>Fuel volume looks unexpected</h2>
+            <p>Vehicle Logbook estimates volume from cost and the selected fuel type's price per liter. Confirm the price and currency in Settings.</p>
+          </article>
+          <article class="support-card">
+            <h2>Maintenance status is overdue</h2>
+            <p>A service can be overdue by date or odometer. Add a newer maintenance entry for the same vehicle and schedule after the work is completed.</p>
+          </article>
+          <article class="support-card">
+            <h2>Data backup</h2>
+            <p>The app stores data locally and does not provide cloud sync. Before uninstalling, replacing a phone, or clearing app data, make sure your device backup plan covers app data.</p>
+          </article>
+          <article class="support-card">
+            <h2>Privacy questions</h2>
+            <p>Read the Privacy Policy and Data Control pages for details on local storage, CSV import, deletion, and support email handling.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container legal-layout">
+        <article class="legal-content">
+          <section class="policy-section">
+            <h2>Before sending a CSV import issue</h2>
+            <ol class="steps">
+              <li>
+                <strong>Confirm the required columns.</strong>
+                Date, Odometer, and Cost are required. Notes and Fuel Type are optional.
+              </li>
+              <li>
+                <strong>Check date formatting.</strong>
+                Try yyyy-MM-dd for the clearest import result.
+              </li>
+              <li>
+                <strong>Remove currency symbols for testing.</strong>
+                Cost values should parse as plain numbers. Thousands separators are accepted in many cases, but simple numbers are best.
+              </li>
+              <li>
+                <strong>Send only a small sample if you need help.</strong>
+                A few representative rows are usually enough. Remove plate numbers, notes, or other personal details before sharing.
+              </li>
+            </ol>
+          </section>
+        </article>
+        <aside class="sidebar">
+          <h2>Store links</h2>
+          <nav>
+            <a href="privacy.html">Privacy Policy</a>
+            <a href="terms.html">Terms of Use</a>
+            <a href="data-control.html">Data Control and Deletion</a>
+          </nav>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div>
+        <strong>Vehicle Logbook</strong>
+        <p class="footer-tagline">Offline maintenance and fuel records for everyday vehicle ownership.</p>
+      </div>
+      <div class="footer-links" aria-label="Footer">
+        <a href="privacy.html">Privacy</a>
+        <a href="support.html">Support</a>
+        <a href="terms.html">Terms</a>
+        <a href="data-control.html">Data Control</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
