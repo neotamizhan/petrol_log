@@ -257,16 +257,20 @@ class _StatsScreenState extends State<StatsScreen> {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                     child: _MonthlySpendPanel(
-                        stats: stats, currency: statsCurrency),
-                   ),
-                 ),
+                    child: _MonthlySpendPanel(
+                      stats: stats,
+                      currency: statsCurrency,
+                    ),
+                  ),
+                ),
                 if (!isDark)
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                       child: _InsightStrip(
-                          stats: stats, currency: statsCurrency),
+                      child: _InsightStrip(
+                        stats: stats,
+                        currency: statsCurrency,
+                      ),
                     ),
                   ),
               ],
