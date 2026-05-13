@@ -255,8 +255,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               setState(() {
                                 _selectedFuelTypeCurrency = value;
                                 _hasChanges = true;
-                                final currentPrice =
-                                    double.tryParse(_priceController.text);
+                                final currentPrice = double.tryParse(
+                                  _priceController.text.replaceAll(',', '').trim(),
+                                );
                                 if (currentPrice != null) {
                                   _priceController.text =
                                       CurrencyUtils.formatAmount(
@@ -1171,8 +1172,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       }
                       setDialogState(() {
                         fuelTypeCurrency = value;
-                        final currentPrice =
-                            double.tryParse(priceController.text);
+                        final currentPrice = double.tryParse(
+                          priceController.text.replaceAll(',', '').trim(),
+                        );
                         if (currentPrice != null) {
                           fuelTypePriceText = CurrencyUtils.formatAmount(
                             currentPrice,

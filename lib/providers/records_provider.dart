@@ -138,6 +138,7 @@ class RecordsProvider with ChangeNotifier {
     notifyListeners();
 
     await _storageService.init();
+    // Load global currency first so legacy fuel types can inherit it as fallback.
     _currency = _storageService.getCurrency();
     _fuelTypes = _sanitizeFuelTypes(
       _storageService.getFuelTypes(),
