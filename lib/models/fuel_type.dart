@@ -3,16 +3,19 @@ import 'dart:convert';
 class FuelType {
   static const String defaultId = 'regular';
   static const String defaultName = 'Regular';
+  static const String defaultCurrency = '₹';
 
   final String id;
   final String name;
   final double pricePerLiter;
+  final String currency;
   final bool active;
 
   const FuelType({
     required this.id,
     required this.name,
     required this.pricePerLiter,
+    this.currency = defaultCurrency,
     this.active = true,
   });
 
@@ -20,12 +23,14 @@ class FuelType {
     String? id,
     String? name,
     double? pricePerLiter,
+    String? currency,
     bool? active,
   }) {
     return FuelType(
       id: id ?? this.id,
       name: name ?? this.name,
       pricePerLiter: pricePerLiter ?? this.pricePerLiter,
+      currency: currency ?? this.currency,
       active: active ?? this.active,
     );
   }
@@ -35,6 +40,7 @@ class FuelType {
       'id': id,
       'name': name,
       'pricePerLiter': pricePerLiter,
+      'currency': currency,
       'active': active,
     };
   }
@@ -48,6 +54,9 @@ class FuelType {
           ? (json['name'] as String).trim()
           : defaultName,
       pricePerLiter: (json['pricePerLiter'] as num?)?.toDouble() ?? 0,
+      currency: (json['currency'] as String?)?.trim().isNotEmpty == true
+          ? (json['currency'] as String).trim()
+          : defaultCurrency,
       active: json['active'] as bool? ?? true,
     );
   }

@@ -27,6 +27,7 @@ class StorageService {
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
     await _migrateLegacyFuelSettings();
+    await _migrateFuelTypeCurrencies();
     await _migrateToVehicleSupport();
   }
 
@@ -38,6 +39,7 @@ class StorageService {
         id: FuelType.defaultId,
         name: FuelType.defaultName,
         pricePerLiter: legacyPrice,
+        currency: getCurrency(),
         active: true,
       );
       await _prefs.setString(
@@ -76,6 +78,37 @@ class StorageService {
 
       if (changed) {
         await _prefs.setString(_recordsKey, jsonEncode(decoded));
+      }
+    } catch (_) {
+      // Keep existing data untouched if migration parsing fails.
+    }
+  }
+
+  Future<void> _migrateFuelTypeCurrencies() async {
+    final rawFuelTypes = _prefs.getString(_fuelTypesKey);
+    if (rawFuelTypes == null || rawFuelTypes.isEmpty) {
+      return;
+    }
+
+    try {
+      final decoded = jsonDecode(rawFuelTypes);
+      if (decoded is! List) {
+        return;
+      }
+
+      final fallbackCurrency = getCurrency();
+      bool changed = false;
+      for (final item in decoded) {
+        if (item is Map) {
+          if ((item['currency'] as String?)?.trim().isNotEmpty != true) {
+            item['currency'] = fallbackCurrency;
+            changed = true;
+          }
+        }
+      }
+
+      if (changed) {
+        await _prefs.setString(_fuelTypesKey, jsonEncode(decoded));
       }
     } catch (_) {
       // Keep existing data untouched if migration parsing fails.
@@ -175,6 +208,7 @@ class StorageService {
           id: FuelType.defaultId,
           name: FuelType.defaultName,
           pricePerLiter: _prefs.getDouble(_fuelPriceKey) ?? defaultFuelPrice,
+          currency: getCurrency(),
           active: true,
         ),
       ];
@@ -187,6 +221,7 @@ class StorageService {
           id: FuelType.defaultId,
           name: FuelType.defaultName,
           pricePerLiter: _prefs.getDouble(_fuelPriceKey) ?? defaultFuelPrice,
+          currency: getCurrency(),
           active: true,
         ),
       ];
@@ -252,6 +287,7 @@ class StorageService {
           id: FuelType.defaultId,
           name: FuelType.defaultName,
           pricePerLiter: price,
+          currency: getCurrency(),
           active: true,
         ),
       );

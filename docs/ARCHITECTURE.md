@@ -1,6 +1,6 @@
 # Vehicle Logbook – Technical Architecture
 
-> **Last updated:** 2026-05-03
+> **Last updated:** 2026-05-13
 > **Version:** 1.0.0+3
 > **Stack:** Flutter (Dart 3.0+) · Provider · SharedPreferences
 
@@ -108,7 +108,7 @@ C4Component
 
     Component(init, "Initializer", "async _loadAll()", "Loads all data from StorageService on startup.\nRuns migrations and sanitization.")
     Component(recordMgmt, "Fill Record Management", "addRecord / updateRecord / deleteRecord", "Maintains sorted list of FillRecords.\nUpdates vehicle odometer on add.")
-    Component(fuelMgmt, "Fuel Type Management", "addFuelType / updateFuelType / deleteFuelType", "Manages available fuel types.\nSoft-deletes types that have records.")
+    Component(fuelMgmt, "Fuel Type Management", "addFuelType / updateFuelType / deleteFuelType", "Manages available fuel types,\nincluding price and per-type currency.\nSoft-deletes types that have records.")
     Component(vehicleMgmt, "Vehicle Management", "addVehicle / updateVehicle / deleteVehicle", "Manages vehicle registry.\nSoft-deletes vehicles with existing records.")
     Component(mainMgmt, "Maintenance Management", "addMaintenanceRecord / updateMaintenanceRecord\n/ deleteMaintenanceRecord", "Manages maintenance event log.\nNewer records supersede older records\nwith the same vehicle/service schedule.")
     Component(analytics, "Analytics Engine", "getOverallStats / getRefillForecast\n/ getMaintenanceOverview / getMaintenanceDueStatus", "Pure computation over in-memory state.\nNo I/O. Returns Maps for UI consumption.\nMaintenance due status is evaluated only\nfor the newest record in each schedule.")
@@ -158,7 +158,7 @@ C4Component
     Component(maintenance, "MaintenanceScreen", "maintenance_screen.dart", "Service history per vehicle.\nStatus badges: Overdue / Due Soon / On Track.")
     Component(addMaint, "AddMaintenanceScreen", "add_maintenance_screen.dart", "Form: service type, date, odometer,\ncost, next-due targets, notes.")
     Component(stats, "StatsScreen", "stats_screen.dart", "Analytics dashboard.\nFilters by vehicle and fuel type.")
-    Component(settings, "SettingsScreen", "settings_screen.dart", "Fuel pricing, currency, theme,\nfuel type management, CSV import.")
+    Component(settings, "SettingsScreen", "settings_screen.dart", "Fuel pricing, per-type currency,\nglobal currency, theme,\nfuel type management, CSV import.")
   }
 ```
 
@@ -189,6 +189,7 @@ erDiagram
     String id PK
     String name
     double pricePerLiter
+    String currency
     bool active
   }
 
@@ -226,7 +227,7 @@ erDiagram
 | Model | Key Computed Properties |
 |---|---|
 | `FillRecord` | `getDistanceSinceLastFill()`, `getFuelAddedLiters()`, `getMileage()`, `getDaysSinceLastFill()` |
-| `FuelType` | `normalizeId()` – sanitizes raw name to a stable key |
+| `FuelType` | `normalizeId()` – sanitizes raw name to a stable key; also stores `pricePerLiter` + display `currency` |
 | `Vehicle` | `currentOdometer` updated by provider on each fill add |
 | `MaintenanceRecord` | `hasDueTarget`, `normalizedServiceType`, `scheduleKey` |
 
@@ -235,7 +236,7 @@ erDiagram
 | Key | Type | Description |
 |---|---|---|
 | `fill_records` | JSON array | All `FillRecord` objects |
-| `fuel_types` | JSON array | All `FuelType` objects |
+| `fuel_types` | JSON array | All `FuelType` objects, including per-type currency |
 | `selected_fuel_type_id` | String | Currently active fuel type |
 | `vehicles` | JSON array | All `Vehicle` objects |
 | `selected_vehicle_id` | String | Currently selected vehicle |
@@ -365,7 +366,8 @@ flowchart LR
 
 | Migration | Trigger | Action |
 |---|---|---|
-| `_migrateLegacyFuelSettings` | `fuel_price_per_liter` key exists on load | Creates a `Regular` FuelType using the stored price; removes old key |
+| `_migrateLegacyFuelSettings` | `fuel_price_per_liter` key exists on load | Creates a `Regular` FuelType using the stored price and current global currency; removes old key |
+| `_migrateFuelTypeCurrencies` | Stored `fuel_types` entries are missing `currency` | Backfills each fuel type with the current global currency so existing records keep a usable display currency |
 | `_migrateToVehicleSupport` | `vehicles` key empty but `fill_records` exist | Creates a `My Vehicle` default vehicle; sets `vehicleId` on all existing records |
 
 ---
@@ -459,10 +461,10 @@ No network packages. No analytics SDKs. No crash reporting SDKs.
 | Layer | Test File | Key Scenarios |
 |---|---|---|
 | `FillRecord` model | `test/models/fill_record_test.dart` | Distance, mileage, volume, days calculations |
-| `FuelType` model | `test/models/fuel_type_test.dart` | ID normalization, serialization |
+| `FuelType` model | `test/models/fuel_type_test.dart` | ID normalization, serialization, per-type currency round-trip |
 | `Vehicle` model | `test/models/vehicle_test.dart` | Equality, serialization |
 | `MaintenanceRecord` | `test/models/maintenance_record_test.dart` | Due status, scheduleKey |
-| `RecordsProvider` | `test/providers/records_provider_test.dart` | Analytics, filtering, CRUD |
+| `RecordsProvider` | `test/providers/records_provider_test.dart` | Analytics, filtering, CRUD, fuel-type currency resolution |
 | `ImportService` | `test/services/import_service_test.dart` | Date format variants, edge cases |
 | `CurrencyUtils` | `test/utils/currency_utils_test.dart` | Decimal places, formatting |
 
@@ -485,7 +487,7 @@ petrol_log/
 │   ├── main.dart                        # App entry: ChangeNotifierProvider + MaterialApp
 │   ├── models/
 │   │   ├── fill_record.dart             # Fuel fill event
-│   │   ├── fuel_type.dart               # Fuel type with price
+│   │   ├── fuel_type.dart               # Fuel type with price and currency
 │   │   ├── vehicle.dart                 # Vehicle entity
 │   │   └── maintenance_record.dart      # Service/maintenance event
 │   ├── providers/
@@ -546,6 +548,7 @@ petrol_log/
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-05-13 | 1.0.0+3 | Added fuel-type-level currency support for pricing, persistence, and fuel record displays. |
 | 2026-05-03 | 1.0.0+3 | Added GitHub Pages product website with privacy, support, terms, and data-control pages for app store review. |
 | 2026-05-01 | 1.0.0+3 | Fixed maintenance due status so newer service entries supersede older overdue schedules. |
 | 2026-04-30 | 1.0.0+3 | Reframed the product as Vehicle Logbook with a maintenance-first home workflow, one Log Activity entry point, and a combined service/fuel timeline. |

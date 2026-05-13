@@ -83,6 +83,8 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                     provider.getFuelTypeById(selectedFuelTypeId);
                 final selectedPrice =
                     provider.getFuelPriceForFuelTypeId(selectedFuelTypeId);
+                final selectedCurrency =
+                    provider.getCurrencyForFuelTypeId(selectedFuelTypeId);
                 return Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -127,7 +129,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            '${provider.currency}${CurrencyUtils.formatAmount(selectedPrice, provider.currency)}',
+                            '$selectedCurrency${CurrencyUtils.formatAmount(selectedPrice, selectedCurrency)}',
                             style: theme.textTheme.headlineLarge?.copyWith(
                               fontWeight: FontWeight.w700,
                               color: AppColors.primary,
@@ -251,8 +253,10 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                         isExpanded: true,
                         icon: const Icon(Icons.expand_more_rounded),
                         items: availableFuelTypes.map((fuelType) {
+                          final fuelTypeCurrency =
+                              provider.getCurrencyForFuelTypeId(fuelType.id);
                           final priceLabel =
-                              '${provider.currency}${CurrencyUtils.formatAmount(fuelType.pricePerLiter, provider.currency)}/L';
+                              '$fuelTypeCurrency${CurrencyUtils.formatAmount(fuelType.pricePerLiter, fuelTypeCurrency)}/L';
                           return DropdownMenuItem<String>(
                             value: fuelType.id,
                             child: Text('${fuelType.name}  •  $priceLabel'),
@@ -264,6 +268,16 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                           }
                           setState(() {
                             _selectedFuelTypeId = value;
+                            final currentCost =
+                                double.tryParse(_costController.text);
+                            if (currentCost != null) {
+                              final currency =
+                                  provider.getCurrencyForFuelTypeId(value);
+                              _costController.text = CurrencyUtils.formatAmount(
+                                currentCost,
+                                currency,
+                              );
+                            }
                           });
                         },
                       ),
@@ -435,8 +449,15 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                     icon: Icons.attach_money_rounded,
                     child: Consumer<RecordsProvider>(
                       builder: (context, provider, child) {
+                        final selectedFuelTypeId = _selectedFuelTypeId.isNotEmpty
+                            ? _selectedFuelTypeId
+                            : provider.selectedFuelTypeId;
+                        final selectedCurrency =
+                            provider.getCurrencyForFuelTypeId(
+                          selectedFuelTypeId,
+                        );
                         return _TextFieldShell(
-                          leadingText: provider.currency,
+                          leadingText: selectedCurrency,
                           child: TextFormField(
                             controller: _costController,
                             keyboardType: const TextInputType.numberWithOptions(
@@ -444,12 +465,12 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                             inputFormatters: [
                               FilteringTextInputFormatter.allow(
                                 RegExp(CurrencyUtils.getInputPattern(
-                                    provider.currency)),
+                                    selectedCurrency)),
                               ),
                             ],
                             decoration: InputDecoration(
                               hintText: CurrencyUtils.getPlaceholder(
-                                  provider.currency),
+                                  selectedCurrency),
                               border: InputBorder.none,
                             ),
                             style: theme.textTheme.headlineSmall?.copyWith(

@@ -38,6 +38,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _hasChanges = false;
   bool _isImporting = false;
   String _selectedCurrency = 'KWD';
+  String _selectedFuelTypeCurrency = FuelType.defaultCurrency;
   String _selectedFuelTypeId = '';
   ThemeMode _selectedThemeMode = ThemeMode.system;
 
@@ -47,12 +48,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<RecordsProvider>();
       final selectedFuelTypeId = provider.selectedFuelTypeId;
+      final selectedFuelTypeCurrency =
+          provider.getCurrencyForFuelTypeId(selectedFuelTypeId);
       _priceController.text = CurrencyUtils.formatAmount(
         provider.getFuelPriceForFuelTypeId(selectedFuelTypeId),
-        provider.currency,
+        selectedFuelTypeCurrency,
       );
       setState(() {
         _selectedCurrency = provider.currency;
+        _selectedFuelTypeCurrency = selectedFuelTypeCurrency;
         _selectedFuelTypeId = selectedFuelTypeId;
         _selectedThemeMode = provider.themeMode;
       });
@@ -191,12 +195,76 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               }
                               setState(() {
                                 _selectedFuelTypeId = value;
+                                _selectedFuelTypeCurrency =
+                                    provider.getCurrencyForFuelTypeId(value);
                                 _priceController.text =
                                     CurrencyUtils.formatAmount(
                                   provider.getFuelPriceForFuelTypeId(value),
-                                  _selectedCurrency,
+                                  _selectedFuelTypeCurrency,
                                 );
                                 _hasChanges = true;
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'CURRENCY',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onSurface.withOpacity(0.5),
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? AppColors.surfaceDarkElevated
+                              : AppColors.backgroundLight,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isDark
+                                ? AppColors.outlineDark
+                                : AppColors.outlineLight,
+                          ),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _currencies.any((currency) =>
+                                    currency['symbol'] ==
+                                    _selectedFuelTypeCurrency)
+                                ? _selectedFuelTypeCurrency
+                                : _currencies.first['symbol'],
+                            isExpanded: true,
+                            icon: const Icon(Icons.expand_more_rounded),
+                            items: _currencies.map((currency) {
+                              return DropdownMenuItem<String>(
+                                value: currency['symbol'],
+                                child: Text(
+                                  '${currency['symbol']}  ${currency['name']}',
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              if (value == null) {
+                                return;
+                              }
+                              setState(() {
+                                _selectedFuelTypeCurrency = value;
+                                _hasChanges = true;
+                                final currentPrice = double.tryParse(
+                                  _priceController.text.replaceAll(',', '').trim(),
+                                );
+                                if (currentPrice != null) {
+                                  _priceController.text =
+                                      CurrencyUtils.formatAmount(
+                                    currentPrice,
+                                    value,
+                                  );
+                                }
                               });
                             },
                           ),
@@ -219,7 +287,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         inputFormatters: [
                           FilteringTextInputFormatter.allow(
                             RegExp(CurrencyUtils.getInputPattern(
-                                _selectedCurrency)),
+                                _selectedFuelTypeCurrency)),
                           ),
                         ],
                         style: theme.textTheme.displaySmall?.copyWith(
@@ -227,7 +295,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           color: AppColors.primary,
                         ),
                         decoration: InputDecoration(
-                          prefixText: '$_selectedCurrency ',
+                          prefixText: '$_selectedFuelTypeCurrency ',
                           prefixStyle: theme.textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.w700,
                             color: AppColors.primary,
@@ -298,7 +366,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         children: fuelTypes.map((fuelType) {
                           final isSelected = fuelType.id == selectedId;
                           final badgeText =
-                              '${fuelType.name} • ${_selectedCurrency}${CurrencyUtils.formatAmount(fuelType.pricePerLiter, _selectedCurrency)}';
+                              '${fuelType.name} • ${fuelType.currency}${CurrencyUtils.formatAmount(fuelType.pricePerLiter, fuelType.currency)}';
                           return Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 6),
@@ -370,16 +438,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             setState(() {
                               _selectedCurrency = value;
                               _hasChanges = true;
-                              // Update price controller text to match new currency's decimal places
-                              final currentPrice =
-                                  double.tryParse(_priceController.text);
-                              if (currentPrice != null) {
-                                _priceController.text =
-                                    CurrencyUtils.formatAmount(
-                                  currentPrice,
-                                  value,
-                                );
-                              }
                             });
                           }
                         },
@@ -776,7 +834,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
         : provider.selectedFuelTypeId;
     final price = _parseAmount(_priceController.text);
     await provider.setSelectedFuelType(selectedFuelTypeId);
-    await provider.setFuelPrice(price);
+    final selectedFuelType =
+        provider.getFuelTypeById(provider.selectedFuelTypeId);
+    if (selectedFuelType != null) {
+      await provider.updateFuelType(
+        selectedFuelType.copyWith(
+          pricePerLiter: price,
+          currency: _selectedFuelTypeCurrency,
+        ),
+      );
+    }
     await provider.setCurrency(_selectedCurrency);
     await provider.setThemeMode(_selectedThemeMode);
 
@@ -796,88 +863,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _showAddFuelTypeDialog(RecordsProvider provider) async {
-    String fuelTypeName = '';
-    String fuelTypePriceText = CurrencyUtils.formatAmount(
-      provider.fuelPricePerLiter,
-      _selectedCurrency,
-    );
-    final formKey = GlobalKey<FormState>();
-
-    final draft = await showDialog<_FuelTypeDraft>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Add Fuel Type'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                initialValue: fuelTypeName,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(
-                  labelText: 'Fuel type name',
-                  hintText: 'Premium 95',
-                ),
-                onChanged: (value) => fuelTypeName = value,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Enter a fuel type name';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                initialValue: fuelTypePriceText,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(
-                    RegExp(CurrencyUtils.getInputPattern(_selectedCurrency)),
-                  ),
-                ],
-                onChanged: (value) => fuelTypePriceText = value,
-                decoration: InputDecoration(
-                  labelText: 'Price per liter',
-                  prefixText: '$_selectedCurrency ',
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Enter price';
-                  }
-                  final price =
-                      double.tryParse(value.replaceAll(',', '').trim());
-                  if (price == null || price <= 0) {
-                    return 'Enter a valid price';
-                  }
-                  return null;
-                },
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (!formKey.currentState!.validate()) {
-                return;
-              }
-              Navigator.of(ctx).pop(
-                _FuelTypeDraft(
-                  name: fuelTypeName.trim(),
-                  pricePerLiter: _parseAmount(fuelTypePriceText),
-                ),
-              );
-            },
-            child: const Text('Add'),
-          ),
-        ],
+    final fuelTypeCurrency = provider.currency;
+    final draft = await _showFuelTypeDialog(
+      title: 'Add Fuel Type',
+      initialName: '',
+      initialCurrency: fuelTypeCurrency,
+      initialPriceText: CurrencyUtils.formatAmount(
+        provider.fuelPricePerLiter,
+        fuelTypeCurrency,
       ),
+      nameHintText: 'Premium 95',
+      confirmLabel: 'Add',
     );
 
     if (draft == null) {
@@ -890,6 +886,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await provider.addFuelType(
       name: draft.name,
       pricePerLiter: draft.pricePerLiter,
+      currency: draft.currency,
     );
 
     final createdFuelType = provider.fuelTypes.firstWhere(
@@ -905,8 +902,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _selectedFuelTypeId = createdFuelType.id;
       _priceController.text = CurrencyUtils.formatAmount(
         createdFuelType.pricePerLiter,
-        _selectedCurrency,
+        createdFuelType.currency,
       );
+      _selectedFuelTypeCurrency = createdFuelType.currency;
       _hasChanges = false;
     });
 
@@ -925,85 +923,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     RecordsProvider provider,
     FuelType fuelType,
   ) async {
-    String fuelTypeName = fuelType.name;
-    String fuelTypePriceText = CurrencyUtils.formatAmount(
-      fuelType.pricePerLiter,
-      _selectedCurrency,
-    );
-    final formKey = GlobalKey<FormState>();
-
-    final draft = await showDialog<_FuelTypeDraft>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Edit Fuel Type'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                initialValue: fuelTypeName,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(labelText: 'Fuel type name'),
-                onChanged: (value) => fuelTypeName = value,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Enter a fuel type name';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                initialValue: fuelTypePriceText,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(
-                    RegExp(CurrencyUtils.getInputPattern(_selectedCurrency)),
-                  ),
-                ],
-                onChanged: (value) => fuelTypePriceText = value,
-                decoration: InputDecoration(
-                  labelText: 'Price per liter',
-                  prefixText: '$_selectedCurrency ',
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Enter price';
-                  }
-                  final price =
-                      double.tryParse(value.replaceAll(',', '').trim());
-                  if (price == null || price <= 0) {
-                    return 'Enter a valid price';
-                  }
-                  return null;
-                },
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (!formKey.currentState!.validate()) {
-                return;
-              }
-              Navigator.of(ctx).pop(
-                _FuelTypeDraft(
-                  name: fuelTypeName.trim(),
-                  pricePerLiter: _parseAmount(fuelTypePriceText),
-                ),
-              );
-            },
-            child: const Text('Save'),
-          ),
-        ],
+    final draft = await _showFuelTypeDialog(
+      title: 'Edit Fuel Type',
+      initialName: fuelType.name,
+      initialCurrency: fuelType.currency,
+      initialPriceText: CurrencyUtils.formatAmount(
+        fuelType.pricePerLiter,
+        fuelType.currency,
       ),
+      nameHintText: null,
+      confirmLabel: 'Save',
     );
 
     if (draft == null) {
@@ -1015,6 +944,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final updatedFuelType = fuelType.copyWith(
       name: draft.name,
       pricePerLiter: draft.pricePerLiter,
+      currency: draft.currency,
     );
     await provider.updateFuelType(updatedFuelType);
 
@@ -1025,8 +955,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _priceController.text = CurrencyUtils.formatAmount(
           updatedFuelType.pricePerLiter,
-          _selectedCurrency,
+          updatedFuelType.currency,
         );
+        _selectedFuelTypeCurrency = updatedFuelType.currency;
         _hasChanges = false;
       });
     }
@@ -1097,9 +1028,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     setState(() {
       _selectedFuelTypeId = nextSelected;
+      _selectedFuelTypeCurrency = provider.getCurrencyForFuelTypeId(nextSelected);
       _priceController.text = CurrencyUtils.formatAmount(
         provider.getFuelPriceForFuelTypeId(nextSelected),
-        _selectedCurrency,
+        _selectedFuelTypeCurrency,
       );
       _hasChanges = false;
     });
@@ -1183,15 +1115,145 @@ class _SettingsScreenState extends State<SettingsScreen> {
   double _parseAmount(String text) {
     return double.parse(text.replaceAll(',', '').trim());
   }
+
+  Future<_FuelTypeDraft?> _showFuelTypeDialog({
+    required String title,
+    required String initialName,
+    required String initialCurrency,
+    required String initialPriceText,
+    required String? nameHintText,
+    required String confirmLabel,
+  }) async {
+    String fuelTypeName = initialName;
+    String fuelTypeCurrency = initialCurrency;
+    String fuelTypePriceText = initialPriceText;
+    final priceController = TextEditingController(text: fuelTypePriceText);
+    final formKey = GlobalKey<FormState>();
+
+    try {
+      return await showDialog<_FuelTypeDraft>(
+        context: context,
+        builder: (ctx) => StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: Text(title),
+            content: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    initialValue: fuelTypeName,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: InputDecoration(
+                      labelText: 'Fuel type name',
+                      hintText: nameHintText,
+                    ),
+                    onChanged: (value) => fuelTypeName = value,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Enter a fuel type name';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: fuelTypeCurrency,
+                    decoration: const InputDecoration(labelText: 'Currency'),
+                    items: _currencies.map((currency) {
+                      return DropdownMenuItem<String>(
+                        value: currency['symbol'],
+                        child: Text('${currency['symbol']}  ${currency['name']}'),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value == null) {
+                        return;
+                      }
+                      setDialogState(() {
+                        fuelTypeCurrency = value;
+                        final currentPrice = double.tryParse(
+                          priceController.text.replaceAll(',', '').trim(),
+                        );
+                        if (currentPrice != null) {
+                          fuelTypePriceText = CurrencyUtils.formatAmount(
+                            currentPrice,
+                            value,
+                          );
+                          priceController.text = fuelTypePriceText;
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: priceController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(CurrencyUtils.getInputPattern(fuelTypeCurrency)),
+                      ),
+                    ],
+                    onChanged: (value) => fuelTypePriceText = value,
+                    decoration: InputDecoration(
+                      labelText: 'Price per liter',
+                      prefixText: '$fuelTypeCurrency ',
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Enter price';
+                      }
+                      final price =
+                          double.tryParse(value.replaceAll(',', '').trim());
+                      if (price == null || price <= 0) {
+                        return 'Enter a valid price';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  if (!formKey.currentState!.validate()) {
+                    return;
+                  }
+                  Navigator.of(ctx).pop(
+                    _FuelTypeDraft(
+                      name: fuelTypeName.trim(),
+                      pricePerLiter: _parseAmount(fuelTypePriceText),
+                      currency: fuelTypeCurrency,
+                    ),
+                  );
+                },
+                child: Text(confirmLabel),
+              ),
+            ],
+          ),
+        ),
+      );
+    } finally {
+      priceController.dispose();
+    }
+  }
 }
 
 class _FuelTypeDraft {
   final String name;
   final double pricePerLiter;
+  final String currency;
 
   const _FuelTypeDraft({
     required this.name,
     required this.pricePerLiter,
+    required this.currency,
   });
 }
 

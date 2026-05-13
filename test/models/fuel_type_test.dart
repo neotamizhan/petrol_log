@@ -14,14 +14,24 @@ void main() {
       expect(fuelType.id, FuelType.defaultId);
       expect(fuelType.name, FuelType.defaultName);
       expect(fuelType.pricePerLiter, 0);
+      expect(fuelType.currency, FuelType.defaultCurrency);
       expect(fuelType.active, isTrue);
     });
 
     test('encode/decode roundtrip preserves values', () {
       final fuelTypes = [
-        const FuelType(id: 'regular', name: 'Regular', pricePerLiter: 100),
         const FuelType(
-            id: 'premium_95', name: 'Premium 95', pricePerLiter: 130),
+          id: 'regular',
+          name: 'Regular',
+          pricePerLiter: 100,
+          currency: 'KWD',
+        ),
+        const FuelType(
+          id: 'premium_95',
+          name: 'Premium 95',
+          pricePerLiter: 130,
+          currency: '₹',
+        ),
       ];
 
       final encoded = FuelType.encodeFuelTypes(fuelTypes);
@@ -31,6 +41,8 @@ void main() {
       expect(decoded[1].id, 'premium_95');
       expect(decoded[1].name, 'Premium 95');
       expect(decoded[1].pricePerLiter, 130);
+      expect(decoded[0].currency, 'KWD');
+      expect(decoded[1].currency, '₹');
     });
   });
 }

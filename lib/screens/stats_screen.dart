@@ -63,6 +63,9 @@ class _StatsScreenState extends State<StatsScreen> {
             final vehicleId = selectedVehicleFilterId == 'all'
                 ? null
                 : selectedVehicleFilterId;
+            final statsCurrency = fuelTypeId != null
+                ? provider.getCurrencyForFuelTypeId(fuelTypeId)
+                : provider.currency;
             final stats = provider.getOverallStats(
                 fuelTypeId: fuelTypeId, vehicleId: vehicleId);
             final totalRecords = stats['totalRecords'] as int;
@@ -255,7 +258,9 @@ class _StatsScreenState extends State<StatsScreen> {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                     child: _MonthlySpendPanel(
-                        stats: stats, currency: provider.currency),
+                      stats: stats,
+                      currency: statsCurrency,
+                    ),
                   ),
                 ),
                 if (!isDark)
@@ -263,7 +268,9 @@ class _StatsScreenState extends State<StatsScreen> {
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                       child: _InsightStrip(
-                          stats: stats, currency: provider.currency),
+                        stats: stats,
+                        currency: statsCurrency,
+                      ),
                     ),
                   ),
               ],
