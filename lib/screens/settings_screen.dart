@@ -871,114 +871,118 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final priceController = TextEditingController(text: fuelTypePriceText);
     final formKey = GlobalKey<FormState>();
 
-    final draft = await showDialog<_FuelTypeDraft>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Add Fuel Type'),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  initialValue: fuelTypeName,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: 'Fuel type name',
-                    hintText: 'Premium 95',
-                  ),
-                  onChanged: (value) => fuelTypeName = value,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Enter a fuel type name';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: fuelTypeCurrency,
-                  decoration: const InputDecoration(labelText: 'Currency'),
-                  items: _currencies.map((currency) {
-                    return DropdownMenuItem<String>(
-                      value: currency['symbol'],
-                      child: Text('${currency['symbol']}  ${currency['name']}'),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value == null) {
-                      return;
-                    }
-                    setDialogState(() {
-                      fuelTypeCurrency = value;
-                      final currentPrice =
-                          double.tryParse(priceController.text);
-                      if (currentPrice != null) {
-                        fuelTypePriceText = CurrencyUtils.formatAmount(
-                          currentPrice,
-                          value,
-                        );
-                        priceController.text = fuelTypePriceText;
-                      }
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: priceController,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(
-                      RegExp(CurrencyUtils.getInputPattern(fuelTypeCurrency)),
+    final _FuelTypeDraft? draft;
+    try {
+      draft = await showDialog<_FuelTypeDraft>(
+        context: context,
+        builder: (ctx) => StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: const Text('Add Fuel Type'),
+            content: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    initialValue: fuelTypeName,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: const InputDecoration(
+                      labelText: 'Fuel type name',
+                      hintText: 'Premium 95',
                     ),
-                  ],
-                  onChanged: (value) => fuelTypePriceText = value,
-                  decoration: InputDecoration(
-                    labelText: 'Price per liter',
-                    prefixText: '$fuelTypeCurrency ',
+                    onChanged: (value) => fuelTypeName = value,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Enter a fuel type name';
+                      }
+                      return null;
+                    },
                   ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Enter price';
-                    }
-                    final price =
-                        double.tryParse(value.replaceAll(',', '').trim());
-                    if (price == null || price <= 0) {
-                      return 'Enter a valid price';
-                    }
-                    return null;
-                  },
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: fuelTypeCurrency,
+                    decoration: const InputDecoration(labelText: 'Currency'),
+                    items: _currencies.map((currency) {
+                      return DropdownMenuItem<String>(
+                        value: currency['symbol'],
+                        child: Text('${currency['symbol']}  ${currency['name']}'),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value == null) {
+                        return;
+                      }
+                      setDialogState(() {
+                        fuelTypeCurrency = value;
+                        final currentPrice =
+                            double.tryParse(priceController.text);
+                        if (currentPrice != null) {
+                          fuelTypePriceText = CurrencyUtils.formatAmount(
+                            currentPrice,
+                            value,
+                          );
+                          priceController.text = fuelTypePriceText;
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: priceController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(CurrencyUtils.getInputPattern(fuelTypeCurrency)),
+                      ),
+                    ],
+                    onChanged: (value) => fuelTypePriceText = value,
+                    decoration: InputDecoration(
+                      labelText: 'Price per liter',
+                      prefixText: '$fuelTypeCurrency ',
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Enter price';
+                      }
+                      final price =
+                          double.tryParse(value.replaceAll(',', '').trim());
+                      if (price == null || price <= 0) {
+                        return 'Enter a valid price';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  if (!formKey.currentState!.validate()) {
+                    return;
+                  }
+                  Navigator.of(ctx).pop(
+                    _FuelTypeDraft(
+                      name: fuelTypeName.trim(),
+                      pricePerLiter: _parseAmount(fuelTypePriceText),
+                      currency: fuelTypeCurrency,
+                    ),
+                  );
+                },
+                child: const Text('Add'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (!formKey.currentState!.validate()) {
-                  return;
-                }
-                Navigator.of(ctx).pop(
-                  _FuelTypeDraft(
-                    name: fuelTypeName.trim(),
-                    pricePerLiter: _parseAmount(fuelTypePriceText),
-                    currency: fuelTypeCurrency,
-                  ),
-                );
-              },
-              child: const Text('Add'),
-            ),
-          ],
         ),
-      ),
-    );
-    priceController.dispose();
+      );
+    } finally {
+      priceController.dispose();
+    }
 
     if (draft == null) {
       return;
@@ -1036,111 +1040,115 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final priceController = TextEditingController(text: fuelTypePriceText);
     final formKey = GlobalKey<FormState>();
 
-    final draft = await showDialog<_FuelTypeDraft>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Edit Fuel Type'),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  initialValue: fuelTypeName,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(labelText: 'Fuel type name'),
-                  onChanged: (value) => fuelTypeName = value,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Enter a fuel type name';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: fuelTypeCurrency,
-                  decoration: const InputDecoration(labelText: 'Currency'),
-                  items: _currencies.map((currency) {
-                    return DropdownMenuItem<String>(
-                      value: currency['symbol'],
-                      child: Text('${currency['symbol']}  ${currency['name']}'),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value == null) {
-                      return;
-                    }
-                    setDialogState(() {
-                      fuelTypeCurrency = value;
-                      final currentPrice =
-                          double.tryParse(priceController.text);
-                      if (currentPrice != null) {
-                        fuelTypePriceText = CurrencyUtils.formatAmount(
-                          currentPrice,
-                          value,
-                        );
-                        priceController.text = fuelTypePriceText;
+    final _FuelTypeDraft? draft;
+    try {
+      draft = await showDialog<_FuelTypeDraft>(
+        context: context,
+        builder: (ctx) => StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: const Text('Edit Fuel Type'),
+            content: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    initialValue: fuelTypeName,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: const InputDecoration(labelText: 'Fuel type name'),
+                    onChanged: (value) => fuelTypeName = value,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Enter a fuel type name';
                       }
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: priceController,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(
-                      RegExp(CurrencyUtils.getInputPattern(fuelTypeCurrency)),
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: fuelTypeCurrency,
+                    decoration: const InputDecoration(labelText: 'Currency'),
+                    items: _currencies.map((currency) {
+                      return DropdownMenuItem<String>(
+                        value: currency['symbol'],
+                        child: Text('${currency['symbol']}  ${currency['name']}'),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value == null) {
+                        return;
+                      }
+                      setDialogState(() {
+                        fuelTypeCurrency = value;
+                        final currentPrice =
+                            double.tryParse(priceController.text);
+                        if (currentPrice != null) {
+                          fuelTypePriceText = CurrencyUtils.formatAmount(
+                            currentPrice,
+                            value,
+                          );
+                          priceController.text = fuelTypePriceText;
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: priceController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(CurrencyUtils.getInputPattern(fuelTypeCurrency)),
+                      ),
+                    ],
+                    onChanged: (value) => fuelTypePriceText = value,
+                    decoration: InputDecoration(
+                      labelText: 'Price per liter',
+                      prefixText: '$fuelTypeCurrency ',
                     ),
-                  ],
-                  onChanged: (value) => fuelTypePriceText = value,
-                  decoration: InputDecoration(
-                    labelText: 'Price per liter',
-                    prefixText: '$fuelTypeCurrency ',
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Enter price';
+                      }
+                      final price =
+                          double.tryParse(value.replaceAll(',', '').trim());
+                      if (price == null || price <= 0) {
+                        return 'Enter a valid price';
+                      }
+                      return null;
+                    },
                   ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Enter price';
-                    }
-                    final price =
-                        double.tryParse(value.replaceAll(',', '').trim());
-                    if (price == null || price <= 0) {
-                      return 'Enter a valid price';
-                    }
-                    return null;
-                  },
-                ),
-              ],
+                ],
+              ),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  if (!formKey.currentState!.validate()) {
+                    return;
+                  }
+                  Navigator.of(ctx).pop(
+                    _FuelTypeDraft(
+                      name: fuelTypeName.trim(),
+                      pricePerLiter: _parseAmount(fuelTypePriceText),
+                      currency: fuelTypeCurrency,
+                    ),
+                  );
+                },
+                child: const Text('Save'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (!formKey.currentState!.validate()) {
-                  return;
-                }
-                Navigator.of(ctx).pop(
-                  _FuelTypeDraft(
-                    name: fuelTypeName.trim(),
-                    pricePerLiter: _parseAmount(fuelTypePriceText),
-                    currency: fuelTypeCurrency,
-                  ),
-                );
-              },
-              child: const Text('Save'),
-            ),
-          ],
         ),
-      ),
-    );
-    priceController.dispose();
+      );
+    } finally {
+      priceController.dispose();
+    }
 
     if (draft == null) {
       return;
