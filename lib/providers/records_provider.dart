@@ -103,10 +103,15 @@ class RecordsProvider with ChangeNotifier {
     return getFuelPriceForFuelTypeId(record.fuelTypeId);
   }
 
+  String _resolveFuelTypeCurrency(String? currency) {
+    final normalizedCurrency = currency?.trim() ?? '';
+    return normalizedCurrency.isNotEmpty ? normalizedCurrency : _currency;
+  }
+
   String getCurrencyForFuelTypeId(String id) {
     final fuelType = getFuelTypeById(id);
-    if (fuelType != null && fuelType.currency.trim().isNotEmpty) {
-      return fuelType.currency.trim();
+    if (fuelType != null) {
+      return _resolveFuelTypeCurrency(fuelType.currency);
     }
     return _currency;
   }
@@ -172,7 +177,7 @@ class RecordsProvider with ChangeNotifier {
     String? fallbackCurrency,
   }) {
     final Map<String, FuelType> byId = {};
-    final preferredCurrency = (fallbackCurrency ?? _currency).trim();
+    final preferredCurrency = _resolveFuelTypeCurrency(fallbackCurrency);
     final resolvedCurrency = preferredCurrency.isNotEmpty
         ? preferredCurrency
         : FuelType.defaultCurrency;
@@ -190,9 +195,7 @@ class RecordsProvider with ChangeNotifier {
         id: normalizedId,
         name: normalizedName,
         pricePerLiter: normalizedPrice,
-        currency: fuelType.currency.trim().isNotEmpty
-            ? fuelType.currency.trim()
-            : resolvedCurrency,
+        currency: _resolveFuelTypeCurrency(fuelType.currency),
       );
     }
 
