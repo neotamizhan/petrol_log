@@ -103,6 +103,18 @@ class RecordsProvider with ChangeNotifier {
     return getFuelPriceForFuelTypeId(record.fuelTypeId);
   }
 
+  String getCurrencyForFuelTypeId(String id) {
+    final fuelType = getFuelTypeById(id);
+    if (fuelType != null && fuelType.currency.trim().isNotEmpty) {
+      return fuelType.currency.trim();
+    }
+    return _currency;
+  }
+
+  String getCurrencyForRecord(FillRecord record) {
+    return getCurrencyForFuelTypeId(record.fuelTypeId);
+  }
+
   /// Get the previous record for a given record (by date)
   FillRecord? getPreviousRecord(FillRecord record,
       {String? fuelTypeId, String? vehicleId}) {
@@ -121,7 +133,11 @@ class RecordsProvider with ChangeNotifier {
     notifyListeners();
 
     await _storageService.init();
-    _fuelTypes = _sanitizeFuelTypes(_storageService.getFuelTypes());
+    _currency = _storageService.getCurrency();
+    _fuelTypes = _sanitizeFuelTypes(
+      _storageService.getFuelTypes(),
+      fallbackCurrency: _currency,
+    );
     _selectedFuelTypeId = _resolveSelectedFuelTypeId(
       _storageService.getSelectedFuelTypeId(),
     );
@@ -131,7 +147,6 @@ class RecordsProvider with ChangeNotifier {
     );
     _records = _normalizeRecordFuelTypes(_storageService.getRecords());
     _maintenanceRecords = _storageService.getMaintenanceRecords();
-    _currency = _storageService.getCurrency();
     _themeMode = _parseThemeMode(_storageService.getThemeMode());
 
     await _storageService.saveFuelTypes(_fuelTypes);
@@ -152,8 +167,14 @@ class RecordsProvider with ChangeNotifier {
     await _storageService.setSelectedFuelTypeId(_selectedFuelTypeId);
   }
 
-  List<FuelType> _sanitizeFuelTypes(List<FuelType> incoming) {
+  List<FuelType> _sanitizeFuelTypes(
+    List<FuelType> incoming, {
+    String? fallbackCurrency,
+  }) {
     final Map<String, FuelType> byId = {};
+    final resolvedCurrency = (fallbackCurrency ?? _currency).trim().isNotEmpty
+        ? (fallbackCurrency ?? _currency).trim()
+        : FuelType.defaultCurrency;
 
     for (final fuelType in incoming) {
       final normalizedId = FuelType.normalizeId(fuelType.id);
@@ -168,6 +189,9 @@ class RecordsProvider with ChangeNotifier {
         id: normalizedId,
         name: normalizedName,
         pricePerLiter: normalizedPrice,
+        currency: fuelType.currency.trim().isNotEmpty
+            ? fuelType.currency.trim()
+            : resolvedCurrency,
       );
     }
 
@@ -176,6 +200,7 @@ class RecordsProvider with ChangeNotifier {
         id: FuelType.defaultId,
         name: FuelType.defaultName,
         pricePerLiter: StorageService.defaultFuelPrice,
+        currency: resolvedCurrency,
         active: true,
       );
     }
@@ -329,6 +354,7 @@ class RecordsProvider with ChangeNotifier {
   Future<void> addFuelType({
     required String name,
     required double pricePerLiter,
+    required String currency,
   }) async {
     final baseId = FuelType.normalizeId(name);
     String nextId = baseId;
@@ -344,6 +370,7 @@ class RecordsProvider with ChangeNotifier {
         id: nextId,
         name: name.trim(),
         pricePerLiter: pricePerLiter,
+        currency: currency.trim().isNotEmpty ? currency.trim() : _currency,
         active: true,
       ),
     ];
@@ -684,6 +711,7 @@ class RecordsProvider with ChangeNotifier {
       'forecastDistanceKm': forecastDistanceKm,
       'projectedOdometerKm': projectedOdometerKm,
       'expectedCost': expectedCost,
+      'expectedCurrency': getCurrencyForRecord(latestRecord),
       'confidence': _forecastConfidence(recentIntervals),
       'intervalCount': recentIntervals.length,
       'daysUntilRefill': daysUntilRefill,

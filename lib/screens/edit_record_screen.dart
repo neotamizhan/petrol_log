@@ -40,8 +40,11 @@ class _EditRecordScreenState extends State<EditRecordScreen> {
     // Set cost text after frame to access provider
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<RecordsProvider>();
+      final recordCurrency = provider.getCurrencyForFuelTypeId(
+        widget.record.fuelTypeId,
+      );
       _costController.text =
-          CurrencyUtils.formatAmount(widget.record.cost, provider.currency);
+          CurrencyUtils.formatAmount(widget.record.cost, recordCurrency);
     });
   }
 
@@ -177,8 +180,10 @@ class _EditRecordScreenState extends State<EditRecordScreen> {
                         isExpanded: true,
                         icon: const Icon(Icons.expand_more_rounded),
                         items: availableFuelTypes.map((fuelType) {
+                          final fuelTypeCurrency =
+                              provider.getCurrencyForFuelTypeId(fuelType.id);
                           final priceLabel =
-                              '${provider.currency}${CurrencyUtils.formatAmount(fuelType.pricePerLiter, provider.currency)}/L';
+                              '$fuelTypeCurrency${CurrencyUtils.formatAmount(fuelType.pricePerLiter, fuelTypeCurrency)}/L';
                           return DropdownMenuItem<String>(
                             value: fuelType.id,
                             child: Text('${fuelType.name}  •  $priceLabel'),
@@ -188,7 +193,19 @@ class _EditRecordScreenState extends State<EditRecordScreen> {
                           if (value == null) {
                             return;
                           }
-                          setState(() => _selectedFuelTypeId = value);
+                          setState(() {
+                            _selectedFuelTypeId = value;
+                            final currentCost =
+                                double.tryParse(_costController.text);
+                            if (currentCost != null) {
+                              final currency =
+                                  provider.getCurrencyForFuelTypeId(value);
+                              _costController.text = CurrencyUtils.formatAmount(
+                                currentCost,
+                                currency,
+                              );
+                            }
+                          });
                         },
                       ),
                     ),
@@ -236,8 +253,10 @@ class _EditRecordScreenState extends State<EditRecordScreen> {
               icon: Icons.attach_money_rounded,
               child: Consumer<RecordsProvider>(
                 builder: (context, provider, child) {
+                  final selectedCurrency =
+                      provider.getCurrencyForFuelTypeId(_selectedFuelTypeId);
                   return _TextFieldShell(
-                    leadingText: provider.currency,
+                    leadingText: selectedCurrency,
                     child: TextFormField(
                       controller: _costController,
                       keyboardType:
@@ -245,12 +264,12 @@ class _EditRecordScreenState extends State<EditRecordScreen> {
                       inputFormatters: [
                         FilteringTextInputFormatter.allow(
                           RegExp(
-                              CurrencyUtils.getInputPattern(provider.currency)),
+                              CurrencyUtils.getInputPattern(selectedCurrency)),
                         ),
                       ],
                       decoration: InputDecoration(
                         hintText:
-                            CurrencyUtils.getPlaceholder(provider.currency),
+                            CurrencyUtils.getPlaceholder(selectedCurrency),
                         border: InputBorder.none,
                       ),
                       style: theme.textTheme.headlineSmall?.copyWith(

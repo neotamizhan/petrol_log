@@ -26,12 +26,14 @@ void main() {
     id: 'regular',
     name: 'Regular',
     pricePerLiter: 100,
+    currency: 'KWD',
     active: true,
   );
   const premiumFuelType = FuelType(
     id: 'premium_95',
     name: 'Premium 95',
     pricePerLiter: 200,
+    currency: '₹',
     active: true,
   );
 
@@ -247,6 +249,7 @@ void main() {
       expect(premiumForecast!['forecastDays'], 5);
       expect((premiumForecast['projectedOdometerKm'] as double),
           closeTo(1400.0, 0.01));
+      expect(premiumForecast['expectedCurrency'], '₹');
       expect(premiumForecast['status'], 'on_track');
     });
 
@@ -287,6 +290,46 @@ void main() {
 
       expect(provider.selectedFuelTypeId, 'premium_95');
       expect(provider.fuelPricePerLiter, 200.0);
+    });
+
+    test('getCurrencyForRecord returns fuel type specific currency', () async {
+      final record = FillRecord(
+        id: '1',
+        date: DateTime(2024, 1, 1),
+        odometerKm: 1000,
+        cost: 400,
+        fuelTypeId: 'premium_95',
+      );
+      stubStorage(
+        records: [record],
+        fuelTypes: const [regularFuelType, premiumFuelType],
+        currency: '€',
+      );
+
+      provider = RecordsProvider(mockStorageService);
+      await provider.init();
+
+      expect(provider.getCurrencyForFuelTypeId('regular'), 'KWD');
+      expect(provider.getCurrencyForRecord(record), '₹');
+    });
+
+    test('sanitizeFuelTypes falls back to global currency for legacy fuel type',
+        () async {
+      const legacyFuelType = FuelType(
+        id: 'regular',
+        name: 'Regular',
+        pricePerLiter: 100,
+        currency: '',
+      );
+      stubStorage(
+        fuelTypes: const [legacyFuelType],
+        currency: 'KWD',
+      );
+
+      provider = RecordsProvider(mockStorageService);
+      await provider.init();
+
+      expect(provider.getCurrencyForFuelTypeId('regular'), 'KWD');
     });
 
     test('setThemeMode delegates and updates local themeMode', () async {

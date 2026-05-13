@@ -133,7 +133,6 @@ class HomeScreen extends StatelessWidget {
                     child: _NextStepsRow(
                       overview: maintenanceOverview,
                       forecast: forecast,
-                      currency: provider.currency,
                       onOpenMaintenance: () =>
                           _navigateToMaintenance(context, selectedVehicleId),
                     ),
@@ -701,13 +700,11 @@ class _CareMetric extends StatelessWidget {
 class _NextStepsRow extends StatelessWidget {
   final Map<String, dynamic> overview;
   final Map<String, dynamic>? forecast;
-  final String currency;
   final VoidCallback onOpenMaintenance;
 
   const _NextStepsRow({
     required this.overview,
     required this.forecast,
-    required this.currency,
     required this.onOpenMaintenance,
   });
 
@@ -724,7 +721,6 @@ class _NextStepsRow extends StatelessWidget {
         );
         final fuelCard = _FuelNextCard(
           forecast: forecast,
-          currency: currency,
         );
 
         if (narrow) {
@@ -794,11 +790,9 @@ class _MaintenanceNextCard extends StatelessWidget {
 
 class _FuelNextCard extends StatelessWidget {
   final Map<String, dynamic>? forecast;
-  final String currency;
 
   const _FuelNextCard({
     required this.forecast,
-    required this.currency,
   });
 
   @override
@@ -816,6 +810,8 @@ class _FuelNextCard extends StatelessWidget {
 
     final daysUntilRefill = nextForecast['daysUntilRefill'] as int;
     final expectedCost = (nextForecast['expectedCost'] as num).toDouble();
+    final expectedCurrency =
+        nextForecast['expectedCurrency'] as String? ?? FuelType.defaultCurrency;
     final status = nextForecast['status'] as String;
     final color = status == 'overdue'
         ? const Color(0xFFEF4444)
@@ -834,7 +830,7 @@ class _FuelNextCard extends StatelessWidget {
       title: 'Fuel',
       value: value,
       detail:
-          'Expected $currency${CurrencyUtils.formatAmount(expectedCost, currency)}',
+          'Expected $expectedCurrency${CurrencyUtils.formatAmount(expectedCost, expectedCurrency)}',
     );
   }
 }
@@ -1127,7 +1123,7 @@ class _FuelTimelineCard extends StatelessWidget {
             _InlineMeta(
               icon: Icons.payments_rounded,
               text:
-                  '${provider.currency}${CurrencyUtils.formatAmount(record.cost, provider.currency)}',
+                  '${provider.getCurrencyForRecord(record)}${CurrencyUtils.formatAmount(record.cost, provider.getCurrencyForRecord(record))}',
             ),
             _InlineMeta(
               icon: Icons.water_drop_rounded,
