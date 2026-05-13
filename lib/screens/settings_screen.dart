@@ -871,6 +871,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         provider.fuelPricePerLiter,
         fuelTypeCurrency,
       ),
+      nameHintText: 'Premium 95',
       confirmLabel: 'Add',
     );
 
@@ -929,6 +930,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         fuelType.pricePerLiter,
         fuelType.currency,
       ),
+      nameHintText: null,
       confirmLabel: 'Save',
     );
 
@@ -1118,6 +1120,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required String initialName,
     required String initialCurrency,
     required String initialPriceText,
+    required String? nameHintText,
     required String confirmLabel,
   }) async {
     String fuelTypeName = initialName;
@@ -1142,7 +1145,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     textCapitalization: TextCapitalization.words,
                     decoration: InputDecoration(
                       labelText: 'Fuel type name',
-                      hintText: title == 'Add Fuel Type' ? 'Premium 95' : null,
+                      hintText: nameHintText,
                     ),
                     onChanged: (value) => fuelTypeName = value,
                     validator: (value) {
