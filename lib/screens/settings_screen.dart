@@ -868,6 +868,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       provider.fuelPricePerLiter,
       fuelTypeCurrency,
     );
+    final priceController = TextEditingController(text: fuelTypePriceText);
     final formKey = GlobalKey<FormState>();
 
     final draft = await showDialog<_FuelTypeDraft>(
@@ -911,20 +912,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     }
                     setDialogState(() {
                       fuelTypeCurrency = value;
-                      final currentPrice = double.tryParse(fuelTypePriceText);
+                      final currentPrice =
+                          double.tryParse(priceController.text);
                       if (currentPrice != null) {
                         fuelTypePriceText = CurrencyUtils.formatAmount(
                           currentPrice,
                           value,
                         );
+                        priceController.text = fuelTypePriceText;
                       }
                     });
                   },
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
-                  key: ValueKey(fuelTypeCurrency),
-                  initialValue: fuelTypePriceText,
+                  controller: priceController,
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
@@ -976,6 +978,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+    priceController.dispose();
 
     if (draft == null) {
       return;
@@ -1030,6 +1033,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       fuelType.pricePerLiter,
       fuelTypeCurrency,
     );
+    final priceController = TextEditingController(text: fuelTypePriceText);
     final formKey = GlobalKey<FormState>();
 
     final draft = await showDialog<_FuelTypeDraft>(
@@ -1070,20 +1074,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     }
                     setDialogState(() {
                       fuelTypeCurrency = value;
-                      final currentPrice = double.tryParse(fuelTypePriceText);
+                      final currentPrice =
+                          double.tryParse(priceController.text);
                       if (currentPrice != null) {
                         fuelTypePriceText = CurrencyUtils.formatAmount(
                           currentPrice,
                           value,
                         );
+                        priceController.text = fuelTypePriceText;
                       }
                     });
                   },
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
-                  key: ValueKey(fuelTypeCurrency),
-                  initialValue: fuelTypePriceText,
+                  controller: priceController,
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
@@ -1135,6 +1140,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+    priceController.dispose();
 
     if (draft == null) {
       return;

@@ -99,12 +99,7 @@ class StorageService {
       final fallbackCurrency = getCurrency();
       bool changed = false;
       for (final item in decoded) {
-        if (item is Map<String, dynamic>) {
-          if ((item['currency'] as String?)?.trim().isNotEmpty != true) {
-            item['currency'] = fallbackCurrency;
-            changed = true;
-          }
-        } else if (item is Map) {
+        if (item is Map) {
           if ((item['currency'] as String?)?.trim().isNotEmpty != true) {
             item['currency'] = fallbackCurrency;
             changed = true;
