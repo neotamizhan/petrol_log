@@ -172,8 +172,9 @@ class RecordsProvider with ChangeNotifier {
     String? fallbackCurrency,
   }) {
     final Map<String, FuelType> byId = {};
-    final resolvedCurrency = (fallbackCurrency ?? _currency).trim().isNotEmpty
-        ? (fallbackCurrency ?? _currency).trim()
+    final preferredCurrency = (fallbackCurrency ?? _currency).trim();
+    final resolvedCurrency = preferredCurrency.isNotEmpty
+        ? preferredCurrency
         : FuelType.defaultCurrency;
 
     for (final fuelType in incoming) {
