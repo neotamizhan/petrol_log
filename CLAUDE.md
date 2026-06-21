@@ -280,7 +280,12 @@ Before deploying any solution:
 
 ## Documentation Maintenance
 
-The technical architecture document for this project lives at `docs/ARCHITECTURE.md`. Claude must keep it current as part of every significant change.
+This project carries two synchronized knowledge artifacts that Claude must keep current as part of every significant change:
+
+- `docs/ARCHITECTURE.md` — the human-facing technical architecture document (C4 diagrams, ERD, data flow, changelog).
+- `okf/` — an **Open Knowledge Format (OKF) v0.1** bundle: a directory of cross-linked markdown concept files with YAML frontmatter, intended for AI-agent consumption. Its root index is `okf/index.md`; see `okf/log.md` for its change history.
+
+The two cover the same system from different angles and must not drift apart. When one changes, update the other in the same commit.
 
 ### What counts as a significant change
 
@@ -300,15 +305,34 @@ When making a significant change:
 2. Open `docs/ARCHITECTURE.md` and update every affected section (refer to the trigger table in `AGENTS.md` for guidance on which sections to touch).
 3. Update the `> **Last updated:**` date at the top of the file to today's date.
 4. Append a row to the `## Changelog` table at the bottom: `| YYYY-MM-DD | version | one-line summary |`.
-5. Include the documentation update in the **same commit** as the code change — never let documentation drift behind the code.
+5. Update the `okf/` bundle to match (see below).
+6. Include both documentation updates in the **same commit** as the code change — never let documentation drift behind the code.
+
+### How to update the OKF bundle
+
+The `okf/` directory mirrors the architecture as discrete concept files. Map the change to the affected concept(s) and keep the bundle conformant:
+
+- **New concept** (model, screen, service, metric, reference topic): add one markdown file under the matching subdirectory (`models/`, `state/`, `services/`, `screens/`, `metrics/`, `reference/`) using the templates in the okf-authoring skill's `assets/`. Every file needs a non-empty `type` in its YAML frontmatter; concrete code artifacts also get a `resource` GitHub blob URL, abstract concepts (metrics) omit it.
+- **Changed concept**: edit the affected file's `# Schema` table / body and bump its `timestamp`. A renamed model field, storage key, provider method, migration, or dependency all map directly to a concept file edit.
+- **Removed concept**: delete the file and fix any inbound cross-links.
+- **Cross-links**: use bundle-relative absolute links (e.g. `/models/fuel-type.md`); express the relationship in prose, not the link.
+- After editing, regenerate the directory indexes and validate, then add a dated entry to `okf/log.md`:
+
+```bash
+python3 ~/.claude/skills/okf-authoring/scripts/build_index.py okf --root-version
+python3 ~/.claude/skills/okf-authoring/scripts/validate_okf.py okf
+```
+
+The validator must report `CONFORMANT` with `0 error(s)` before committing. (If the okf-authoring skill is unavailable, edit the `index.md` files and frontmatter by hand — the three hard rules are: parseable YAML frontmatter, a non-empty `type` on every non-reserved file, and well-formed `index.md` / `log.md`.)
 
 ### Cost implication
 
-Keeping `docs/ARCHITECTURE.md` accurate eliminates the need for future Claude sessions to re-explore the codebase from scratch, reducing token consumption and interaction cost. Treat documentation updates as zero-overhead work included in every feature or fix.
+Keeping `docs/ARCHITECTURE.md` and the `okf/` bundle accurate eliminates the need for future Claude sessions to re-explore the codebase from scratch, reducing token consumption and interaction cost. The OKF bundle is the agent-optimized path: a session can read just the relevant concept file instead of the whole architecture document. Treat both documentation updates as zero-overhead work included in every feature or fix.
 
 ## Version History
 - v1.0 (2025-02-08): Initial version
 - v1.1 (2026-02-21): Added Documentation Maintenance section
+- v1.2 (2026-06-21): Added the `okf/` OKF v0.1 knowledge bundle to Documentation Maintenance; both artifacts must stay synchronized.
 
 ---
 
