@@ -7,7 +7,7 @@ import '../models/vehicle.dart';
 import '../providers/records_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
-import 'add_maintenance_screen.dart';
+import 'log_entry_screen.dart';
 import 'add_vehicle_screen.dart';
 
 class MaintenanceScreen extends StatefulWidget {
@@ -142,7 +142,9 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
   }) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => AddMaintenanceScreen(record: record),
+        builder: (_) => record == null
+            ? const LogEntryScreen(initialMode: LogMode.service)
+            : LogEntryScreen(editMaintenanceRecord: record),
       ),
     );
   }

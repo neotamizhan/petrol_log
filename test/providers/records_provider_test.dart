@@ -271,6 +271,66 @@ void main() {
       expect(stats['spendByFuelType'], isEmpty);
     });
 
+    test('lastFuelTypeIdForVehicle and lastServiceTypeForVehicle return recents',
+        () async {
+      final vehicle = Vehicle(
+        id: 'v1',
+        name: 'Car',
+        currentOdometer: 0,
+        createdAt: DateTime(2024, 1, 1),
+      );
+      final records = [
+        FillRecord(
+          id: '1',
+          date: DateTime(2024, 1, 1),
+          odometerKm: 1000,
+          cost: 500,
+          fuelTypeId: 'regular',
+          vehicleId: 'v1',
+        ),
+        FillRecord(
+          id: '2',
+          date: DateTime(2024, 2, 1),
+          odometerKm: 1200,
+          cost: 600,
+          fuelTypeId: 'premium_95',
+          vehicleId: 'v1',
+        ),
+      ];
+      final maintenance = [
+        MaintenanceRecord(
+          id: 'm1',
+          vehicleId: 'v1',
+          serviceType: 'Oil Change',
+          serviceDate: DateTime(2024, 1, 5),
+          odometerKm: 1100,
+          createdAt: DateTime(2024, 1, 5),
+        ),
+        MaintenanceRecord(
+          id: 'm2',
+          vehicleId: 'v1',
+          serviceType: 'Brake Service',
+          serviceDate: DateTime(2024, 2, 5),
+          odometerKm: 1300,
+          createdAt: DateTime(2024, 2, 5),
+        ),
+      ];
+      stubStorage(
+        records: records,
+        fuelTypes: const [regularFuelType, premiumFuelType],
+        vehicles: [vehicle],
+        maintenanceRecords: maintenance,
+      );
+
+      provider = RecordsProvider(mockStorageService);
+      await provider.init();
+
+      expect(provider.lastFuelTypeIdForVehicle('v1'), 'premium_95');
+      expect(provider.lastServiceTypeForVehicle('v1'), 'Brake Service');
+      expect(provider.lastFuelTypeIdForVehicle('missing'), isNull);
+      expect(provider.lastServiceTypeForVehicle('missing'), isNull);
+    });
+
     test('getRefillForecast can forecast for a selected fuel type only',
         () async {
       final records = [

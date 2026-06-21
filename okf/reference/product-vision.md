@@ -37,11 +37,9 @@ care without being asked.*
 
 Every screen should fit one loop:
 
-- **Capture** — record what happened. Today split across
-  [AddRecordScreen](/screens/add-record-screen.md) /
-  [EditRecordScreen](/screens/edit-record-screen.md) and
-  [AddMaintenanceScreen](/screens/add-maintenance-screen.md); the streamlining target is one
-  unified "Log" action (the first roadmap step).
+- **Capture** — record what happened. Unified into one
+  [LogEntryScreen](/screens/log-entry.md) (Fuel/Service toggle, create/edit, smart defaults) —
+  the first streamlining step, now shipped.
 - **Attend** — what needs me. [HomeScreen](/screens/home-screen.md) as the single attention
   surface, driven by [Maintenance Due Status](/metrics/maintenance-due-status.md) and the
   [Refill Forecast](/metrics/refill-forecast.md).

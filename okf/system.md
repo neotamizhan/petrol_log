@@ -33,7 +33,7 @@ A layered Flutter app with a single central state object:
 
 | Layer | Concept | Responsibility |
 |---|---|---|
-| UI | [Screens](/screens/index.md) | 11 screens + reusable widgets; all user interaction |
+| UI | [Screens](/screens/index.md) | 9 screens + reusable widgets; all user interaction |
 | State | [RecordsProvider](/state/records-provider.md) | Single source of truth; reactive getters + analytics |
 | Service | [StorageService](/services/storage-service.md), [ImportService](/services/import-service.md) | Persistence and CSV import |
 | Domain | [Data Models](/models/index.md) | Immutable value objects with JSON serialization |

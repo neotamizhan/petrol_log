@@ -75,7 +75,7 @@ C4Container
 
   Container_Boundary(app, "Vehicle Logbook (Flutter App)") {
 
-    Container(ui, "UI Layer", "Flutter Widgets\n(Material 3)", "11 screens + 2 reusable widgets.\nHandles all user interaction\nand data display.")
+    Container(ui, "UI Layer", "Flutter Widgets\n(Material 3)", "9 screens + 2 reusable widgets.\nHandles all user interaction\nand data display.")
     Container(state, "State Layer", "Provider / ChangeNotifier", "RecordsProvider: single source of truth\nfor all app state. Exposes reactive\ngetters and analytics methods.")
     Container(services, "Service Layer", "Dart", "StorageService: CRUD over SharedPreferences.\nImportService: CSV parse & map to domain models.")
     Container(models, "Domain Models", "Dart", "FillRecord · FuelType · Vehicle\n· MaintenanceRecord\nImmutable value objects with\nJSON serialization.")
@@ -150,13 +150,11 @@ C4Component
 
     Component(splash, "SplashScreen", "splash_screen.dart", "Animated entry screen.\n1.7 s delay then navigate to Home.")
     Component(home, "HomeScreen", "home_screen.dart", "Vehicle logbook dashboard.\nShows selected vehicle, maintenance status,\nnext-step cards, and combined service/fuel timeline.")
-    Component(addRecord, "AddRecordScreen", "add_record_screen.dart", "Fuel log form: date, odometer,\nfuel type, cost, notes. Auto-calculates volume.")
-    Component(editRecord, "EditRecordScreen", "edit_record_screen.dart", "Pre-filled form. Adds Delete action.")
+    Component(logEntry, "LogEntryScreen", "log_entry_screen.dart", "Unified Log screen: Fuel/Service toggle,\ncreate or edit, shared + type-specific fields,\nsmart defaults, delete. Replaces the separate\nadd/edit-fuel and add/edit-service screens.")
     Component(vehicles, "VehiclesScreen", "vehicles_screen.dart", "List of vehicles with status indicators.")
     Component(addVehicle, "AddVehicleScreen", "add_vehicle_screen.dart", "Form: name, make, model, year,\nplate, starting odometer.")
     Component(editVehicle, "EditVehicleScreen", "edit_vehicle_screen.dart", "Pre-filled form. Adds Delete action.")
     Component(maintenance, "MaintenanceScreen", "maintenance_screen.dart", "Service history per vehicle.\nStatus badges: Overdue / Due Soon / On Track.")
-    Component(addMaint, "AddMaintenanceScreen", "add_maintenance_screen.dart", "Form: service type, date, odometer,\ncost, next-due targets, notes.")
     Component(stats, "StatsScreen", "stats_screen.dart", "Analytics dashboard (fl_chart).\nOverview grid, spending, efficiency, spend-by-fuel-type donut,\nmonthly-spend bars, cadence, refill forecast, cost of ownership.\nFilters by vehicle and fuel type.")
     Component(settings, "SettingsScreen", "settings_screen.dart", "Fuel pricing, per-type currency,\nglobal currency, theme,\nfuel type management, CSV import.")
   }
@@ -259,7 +257,7 @@ sequenceDiagram
   participant Storage as StorageService
   participant Prefs as SharedPreferences
 
-  Driver->>Screen: Taps "Save" on AddRecordScreen
+  Driver->>Screen: Taps "Save" on LogEntryScreen (Fuel)
   Screen->>Provider: addRecord(fillRecord)
   Provider->>Provider: Append to _records list
   Provider->>Provider: Update vehicle currentOdometer
@@ -319,19 +317,19 @@ flowchart TD
   C --> C3[Next-step cards\nMaintenance status · Fuel forecast]
   C --> C4[Combined activity timeline\nService entries + fuel logs]
 
-  C -->|Log Activity FAB -> Service| D[AddMaintenanceScreen]
-  C -->|Log Activity FAB -> Fuel| E[AddRecordScreen]
+  C -->|Log Activity FAB| E[LogEntryScreen\nFuel default · Service toggle]
+  C3 -->|Log service / forecast card| D[LogEntryScreen\nService mode]
   C -->|Header insights| F[StatsScreen\nAnalytics with filters]
   C -->|Header settings| G[SettingsScreen\nPreferences · Fuel types · CSV import]
   C1 -->|Manage vehicles| H[VehiclesScreen]
 
-  C4 -->|Tap service entry| I[AddMaintenanceScreen\nEdit mode]
-  C4 -->|Tap fuel entry| J[EditRecordScreen]
+  C4 -->|Tap service entry| I[LogEntryScreen\nService · edit]
+  C4 -->|Tap fuel entry| J[LogEntryScreen\nFuel · edit]
   C3 -->|Tap maintenance card| K[MaintenanceScreen]
 
   H -->|FAB| L[AddVehicleScreen]
   H -->|Tap vehicle| M[EditVehicleScreen]
-  K -->|FAB| D
+  K -->|FAB / tap service| D
 
   D -->|Save| C
   E -->|Save| C
@@ -504,13 +502,11 @@ petrol_log/
 │   ├── screens/
 │   │   ├── splash_screen.dart
 │   │   ├── home_screen.dart             # Vehicle logbook dashboard + combined timeline
-│   │   ├── add_record_screen.dart
-│   │   ├── edit_record_screen.dart
+│   │   ├── log_entry_screen.dart        # Unified Log: fuel/service, create/edit
 │   │   ├── add_vehicle_screen.dart
 │   │   ├── edit_vehicle_screen.dart
 │   │   ├── vehicles_screen.dart
 │   │   ├── maintenance_screen.dart
-│   │   ├── add_maintenance_screen.dart
 │   │   ├── stats_screen.dart
 │   │   └── settings_screen.dart
 │   ├── widgets/
@@ -554,6 +550,7 @@ petrol_log/
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-06-21 | 1.0.0+3 | Unified the fuel and maintenance entry screens into one `LogEntryScreen` (Fuel/Service toggle, create/edit, smart defaults); removed the three old entry screens (11→9 screens); added `lastFuelTypeIdForVehicle`/`lastServiceTypeForVehicle` provider helpers. |
 | 2026-06-21 | 1.0.0+3 | Expanded the Stats screen with spending, cadence, spend-by-fuel-type, refill forecast, and cost-of-ownership panels; extended `getOverallStats` outputs and added the `fl_chart` dependency. |
 | 2026-05-13 | 1.0.0+3 | Added fuel-type-level currency support for pricing, persistence, and fuel record displays. |
 | 2026-05-03 | 1.0.0+3 | Added GitHub Pages product website with privacy, support, terms, and data-control pages for app store review. |

@@ -18,9 +18,9 @@ The app's hub. It shows:
 - A combined activity timeline merging [maintenance](/models/maintenance-record.md) and
   [fuel](/models/fill-record.md) entries.
 
-A single **Log Activity** FAB routes to either [AddMaintenanceScreen](/screens/add-maintenance-screen.md)
-(service) or [AddRecordScreen](/screens/add-record-screen.md) (fuel). Header actions open
-[StatsScreen](/screens/stats-screen.md) and [SettingsScreen](/screens/settings-screen.md).
+A single **Log Activity** FAB opens the unified [LogEntryScreen](/screens/log-entry.md) in
+Fuel mode (Service is a toggle inside); next-step cards deep-link into it for service. Header
+actions open [StatsScreen](/screens/stats-screen.md) and [SettingsScreen](/screens/settings-screen.md).
 See [Navigation Map](/reference/navigation-map.md).
 
 # Citations

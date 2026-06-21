@@ -12,7 +12,8 @@ timestamp: 2026-06-21T00:00:00Z
 Shows the [MaintenanceRecord](/models/maintenance-record.md) history per
 [Vehicle](/models/vehicle.md), with status badges driven by
 [Maintenance Due Status](/metrics/maintenance-due-status.md) (Overdue / Due Soon / On
-Track). The FAB opens [AddMaintenanceScreen](/screens/add-maintenance-screen.md). Reached
+Track). The FAB and history rows open the [LogEntryScreen](/screens/log-entry.md) in service
+mode. Reached
 from the [HomeScreen](/screens/home-screen.md) maintenance card.
 
 # Citations

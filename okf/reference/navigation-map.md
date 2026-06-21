@@ -16,19 +16,20 @@ From Home:
 
 | Action | Destination |
 |---|---|
-| Log Activity FAB → Service | [AddMaintenanceScreen](/screens/add-maintenance-screen.md) |
-| Log Activity FAB → Fuel | [AddRecordScreen](/screens/add-record-screen.md) |
+| Log Activity FAB | [LogEntryScreen](/screens/log-entry.md) (Fuel default; Service via toggle) |
+| Next-step card → Log service | [LogEntryScreen](/screens/log-entry.md) (service mode) |
 | Header insights | [StatsScreen](/screens/stats-screen.md) |
 | Header settings | [SettingsScreen](/screens/settings-screen.md) |
 | Vehicle switcher → Manage | [VehiclesScreen](/screens/vehicles-screen.md) |
-| Tap timeline service entry | [AddMaintenanceScreen](/screens/add-maintenance-screen.md) (edit) |
-| Tap timeline fuel entry | [EditRecordScreen](/screens/edit-record-screen.md) |
+| Tap timeline service entry | [LogEntryScreen](/screens/log-entry.md) (service, edit) |
+| Tap timeline fuel entry | [LogEntryScreen](/screens/log-entry.md) (fuel, edit) |
 | Tap maintenance card | [MaintenanceScreen](/screens/maintenance-screen.md) |
 
 From [VehiclesScreen](/screens/vehicles-screen.md): FAB → [AddVehicleScreen](/screens/add-vehicle-screen.md);
 tap a vehicle → [EditVehicleScreen](/screens/edit-vehicle-screen.md). From
-[MaintenanceScreen](/screens/maintenance-screen.md): FAB → AddMaintenanceScreen. Save/Delete
-actions return to the originating hub.
+[MaintenanceScreen](/screens/maintenance-screen.md): the FAB and history rows open the
+[LogEntryScreen](/screens/log-entry.md) in service mode. Save/Delete actions return to the
+originating hub.
 
 # Citations
 

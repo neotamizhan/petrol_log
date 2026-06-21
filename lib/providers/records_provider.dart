@@ -132,6 +132,27 @@ class RecordsProvider with ChangeNotifier {
     return sortedRecords[index - 1];
   }
 
+  /// The most recently used fuel type for a vehicle, for smart-defaulting the
+  /// Log flow. Returns null if the vehicle has no fuel records.
+  String? lastFuelTypeIdForVehicle(String vehicleId) {
+    final vehicleRecords =
+        _records.where((record) => record.vehicleId == vehicleId).toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
+    for (final record in vehicleRecords) {
+      if (record.fuelTypeId.isNotEmpty) {
+        return record.fuelTypeId;
+      }
+    }
+    return null;
+  }
+
+  /// The most recently used service type for a vehicle, for smart-defaulting
+  /// the Log flow. Returns null if the vehicle has no maintenance records.
+  String? lastServiceTypeForVehicle(String vehicleId) {
+    final records = getMaintenanceRecordsForVehicle(vehicleId);
+    return records.isEmpty ? null : records.first.serviceType;
+  }
+
   /// Initialize the provider by loading data from storage
   Future<void> init() async {
     _isLoading = true;

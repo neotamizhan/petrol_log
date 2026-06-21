@@ -3,15 +3,14 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/fill_record.dart';
+import '../models/fuel_type.dart';
 import '../models/maintenance_record.dart';
 import '../models/vehicle.dart';
 import '../providers/records_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
-import 'add_maintenance_screen.dart';
-import 'add_record_screen.dart';
 import 'add_vehicle_screen.dart';
-import 'edit_record_screen.dart';
+import 'log_entry_screen.dart';
 import 'maintenance_screen.dart';
 import 'settings_screen.dart';
 import 'stats_screen.dart';
@@ -182,7 +181,7 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showLogActivitySheet(context),
+        onPressed: () => _navigateToAddFuel(context),
         icon: const Icon(Icons.add_rounded),
         label: const Text('Log Activity'),
       ),
@@ -190,57 +189,10 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  void _showLogActivitySheet(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) {
-        final theme = Theme.of(sheetContext);
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Log activity',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _SheetAction(
-                  icon: Icons.build_circle_rounded,
-                  title: 'Service or repair',
-                  subtitle: 'Maintenance, inspection, parts, insurance',
-                  onTap: () {
-                    Navigator.of(sheetContext).pop();
-                    _navigateToAddMaintenance(context);
-                  },
-                ),
-                const SizedBox(height: 10),
-                _SheetAction(
-                  icon: Icons.local_gas_station_rounded,
-                  title: 'Fuel purchase',
-                  subtitle: 'Cost, fuel type, odometer, notes',
-                  onTap: () {
-                    Navigator.of(sheetContext).pop();
-                    _navigateToAddFuel(context);
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   void _navigateToAddFuel(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => const AddRecordScreen(),
+        builder: (context) => const LogEntryScreen(initialMode: LogMode.fuel),
       ),
     );
   }
@@ -248,7 +200,7 @@ class HomeScreen extends StatelessWidget {
   void _navigateToEditFuel(BuildContext context, FillRecord record) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => EditRecordScreen(record: record),
+        builder: (context) => LogEntryScreen(editFillRecord: record),
       ),
     );
   }
@@ -256,7 +208,8 @@ class HomeScreen extends StatelessWidget {
   void _navigateToAddMaintenance(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => const AddMaintenanceScreen(),
+        builder: (context) =>
+            const LogEntryScreen(initialMode: LogMode.service),
       ),
     );
   }
@@ -267,7 +220,7 @@ class HomeScreen extends StatelessWidget {
   ) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => AddMaintenanceScreen(record: record),
+        builder: (context) => LogEntryScreen(editMaintenanceRecord: record),
       ),
     );
   }
@@ -1461,73 +1414,6 @@ class _NoVehicleHome extends StatelessWidget {
           ),
           const Spacer(),
         ],
-      ),
-    );
-  }
-}
-
-class _SheetAction extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  const _SheetAction({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    return Material(
-      color: isDark ? AppColors.surfaceDark : AppColors.backgroundLight,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              Container(
-                height: 42,
-                width: 42,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: Icon(icon, color: AppColors.primary),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color:
-                            theme.colorScheme.onSurface.withValues(alpha: 0.58),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right_rounded),
-            ],
-          ),
-        ),
       ),
     );
   }
