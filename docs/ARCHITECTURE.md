@@ -1,6 +1,6 @@
 # Vehicle Logbook – Technical Architecture
 
-> **Last updated:** 2026-05-13
+> **Last updated:** 2026-06-21
 > **Version:** 1.0.0+3
 > **Stack:** Flutter (Dart 3.0+) · Provider · SharedPreferences
 
@@ -157,7 +157,7 @@ C4Component
     Component(editVehicle, "EditVehicleScreen", "edit_vehicle_screen.dart", "Pre-filled form. Adds Delete action.")
     Component(maintenance, "MaintenanceScreen", "maintenance_screen.dart", "Service history per vehicle.\nStatus badges: Overdue / Due Soon / On Track.")
     Component(addMaint, "AddMaintenanceScreen", "add_maintenance_screen.dart", "Form: service type, date, odometer,\ncost, next-due targets, notes.")
-    Component(stats, "StatsScreen", "stats_screen.dart", "Analytics dashboard.\nFilters by vehicle and fuel type.")
+    Component(stats, "StatsScreen", "stats_screen.dart", "Analytics dashboard (fl_chart).\nOverview grid, spending, efficiency, spend-by-fuel-type donut,\nmonthly-spend bars, cadence, refill forecast, cost of ownership.\nFilters by vehicle and fuel type.")
     Component(settings, "SettingsScreen", "settings_screen.dart", "Fuel pricing, per-type currency,\nglobal currency, theme,\nfuel type management, CSV import.")
   }
 ```
@@ -386,6 +386,11 @@ Aggregates across filtered records:
 | `averageMileage` | `totalDistance / totalFuelLiters` |
 | `bestMileage` / `worstMileage` | Max/min per-record mileage with associated record |
 | `monthlySpending` | `Map<"YYYY-MM", double>` keyed by fill month |
+| `spendByFuelType` | `Map<fuelTypeId, double>` of cost summed per fuel type (powers the spend-breakdown donut) |
+| `maxFillCost` / `minFillCost` | Most/least expensive single fill, with `maxFillRecord` / `minFillRecord` |
+| `costPerKm` | `totalSpent / totalDistance` |
+| `costPerLiter` | `totalSpent / totalFuelLiters` (average price actually paid) |
+| `fillsPerMonth` | `totalRecords / (totalDays / 30)` |
 
 ### Refill Forecast (`getRefillForecast`)
 
@@ -446,6 +451,7 @@ All app platforms share the same Dart codebase. Platform-specific folders (`andr
 | `intl` | ^0.20.2 | Date/number formatting, localization |
 | `csv` | ^8.0.0 | CSV parsing for historical import |
 | `file_picker` | ^11.0.2 | Cross-platform file selection dialog |
+| `fl_chart` | ^1.2.0 | Bar and pie charts on the Stats screen (monthly spend, spend-by-fuel-type) |
 | `cupertino_icons` | ^1.0.6 | iOS-style icon set |
 | `flutter_lints` | ^6.0.0 | Dev: lint rules |
 | `mocktail` | ^1.0.4 | Dev: test mocking |
@@ -548,6 +554,7 @@ petrol_log/
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-06-21 | 1.0.0+3 | Expanded the Stats screen with spending, cadence, spend-by-fuel-type, refill forecast, and cost-of-ownership panels; extended `getOverallStats` outputs and added the `fl_chart` dependency. |
 | 2026-05-13 | 1.0.0+3 | Added fuel-type-level currency support for pricing, persistence, and fuel record displays. |
 | 2026-05-03 | 1.0.0+3 | Added GitHub Pages product website with privacy, support, terms, and data-control pages for app store review. |
 | 2026-05-01 | 1.0.0+3 | Fixed maintenance due status so newer service entries supersede older overdue schedules. |

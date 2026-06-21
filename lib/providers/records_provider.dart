@@ -520,6 +520,14 @@ class RecordsProvider with ChangeNotifier {
         'averageFillCost': 0.0,
         'averageDaysBetweenFills': 0.0,
         'monthlySpending': <String, double>{},
+        'spendByFuelType': <String, double>{},
+        'maxFillCost': 0.0,
+        'minFillCost': 0.0,
+        'maxFillRecord': null,
+        'minFillRecord': null,
+        'costPerKm': 0.0,
+        'costPerLiter': 0.0,
+        'fillsPerMonth': 0.0,
         'firstFillDate': null,
         'lastFillDate': null,
         'totalDays': 0,
@@ -537,11 +545,17 @@ class RecordsProvider with ChangeNotifier {
     List<double> mileages = [];
     List<int> daysBetweenFills = [];
     Map<String, double> monthlySpending = {};
+    Map<String, double> spendByFuelType = {};
 
     FillRecord? bestMileageRecord;
     FillRecord? worstMileageRecord;
     double bestMileage = 0;
     double worstMileage = double.infinity;
+
+    FillRecord? maxFillRecord;
+    FillRecord? minFillRecord;
+    double maxFillCost = 0;
+    double minFillCost = double.infinity;
 
     for (int i = 0; i < sortedRecords.length; i++) {
       final record = sortedRecords[i];
@@ -551,6 +565,18 @@ class RecordsProvider with ChangeNotifier {
       totalSpent += record.cost;
       final fuelLiters = record.getFuelAddedLiters(pricePerLiter);
       totalFuelLiters += fuelLiters;
+
+      spendByFuelType[record.fuelTypeId] =
+          (spendByFuelType[record.fuelTypeId] ?? 0) + record.cost;
+
+      if (record.cost > maxFillCost) {
+        maxFillCost = record.cost;
+        maxFillRecord = record;
+      }
+      if (record.cost < minFillCost) {
+        minFillCost = record.cost;
+        minFillRecord = record;
+      }
 
       final monthKey =
           '${record.date.year}-${record.date.month.toString().padLeft(2, '0')}';
@@ -609,6 +635,15 @@ class RecordsProvider with ChangeNotifier {
           : 0.0,
       'averageDaysBetweenFills': averageDaysBetweenFills,
       'monthlySpending': monthlySpending,
+      'spendByFuelType': spendByFuelType,
+      'maxFillCost': maxFillCost,
+      'minFillCost': minFillCost == double.infinity ? 0.0 : minFillCost,
+      'maxFillRecord': maxFillRecord,
+      'minFillRecord': minFillRecord,
+      'costPerKm': totalDistance > 0 ? totalSpent / totalDistance : 0.0,
+      'costPerLiter': totalFuelLiters > 0 ? totalSpent / totalFuelLiters : 0.0,
+      'fillsPerMonth':
+          totalDays > 0 ? filteredRecords.length / (totalDays / 30.0) : 0.0,
       'firstFillDate': firstDate,
       'lastFillDate': lastDate,
       'totalDays': totalDays,

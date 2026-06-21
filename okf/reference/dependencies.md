@@ -17,6 +17,7 @@ timestamp: 2026-06-21T00:00:00Z
 | `intl` | ^0.20.2 | Date/number formatting, localization |
 | `csv` | ^8.0.0 | CSV parsing for [import](/services/import-service.md) |
 | `file_picker` | ^11.0.2 | Cross-platform file selection dialog |
+| `fl_chart` | ^1.2.0 | Bar and pie charts on the [Stats screen](/screens/stats-screen.md) |
 | `cupertino_icons` | ^1.0.6 | iOS-style icon set |
 
 # Dev

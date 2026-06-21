@@ -9,5 +9,5 @@
 * [MaintenanceScreen](maintenance-screen.md) - Service history for a vehicle with Overdue / Due Soon / On Track status badges.
 * [SettingsScreen](settings-screen.md) - Preferences hub for fuel pricing, per-type and global currency, theme, fuel type management, and CSV import.
 * [SplashScreen](splash-screen.md) - Animated entry screen shown for 1.7 seconds before navigating to the home dashboard.
-* [StatsScreen](stats-screen.md) - Analytics dashboard presenting fuel and cost stats, filterable by vehicle and fuel type.
+* [StatsScreen](stats-screen.md) - Analytics dashboard presenting fuel, cost, cadence, forecast, and cost-of-ownership stats, filterable by vehicle and fuel type.
 * [VehiclesScreen](vehicles-screen.md) - List of vehicles with status indicators, the entry point for adding and editing vehicles.

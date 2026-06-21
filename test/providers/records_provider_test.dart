@@ -201,6 +201,76 @@ void main() {
       expect(premiumStats['fuelTypeFilter'], 'premium_95');
     });
 
+    test('getOverallStats exposes spending and cadence metrics', () async {
+      final records = [
+        FillRecord(
+          id: '1',
+          date: DateTime(2024, 1, 1),
+          odometerKm: 1000,
+          cost: 500,
+          fuelTypeId: 'regular',
+        ),
+        FillRecord(
+          id: '2',
+          date: DateTime(2024, 1, 15),
+          odometerKm: 1200,
+          cost: 600,
+          fuelTypeId: 'premium_95',
+        ),
+        FillRecord(
+          id: '3',
+          date: DateTime(2024, 2, 1),
+          odometerKm: 1400,
+          cost: 700,
+          fuelTypeId: 'premium_95',
+        ),
+      ];
+      stubStorage(
+          records: records,
+          fuelTypes: const [regularFuelType, premiumFuelType]);
+
+      provider = RecordsProvider(mockStorageService);
+      await provider.init();
+
+      final stats = provider.getOverallStats();
+
+      // totalSpent 1800, totalDistance 400 -> 4.5 per km.
+      expect(stats['costPerKm'], 4.5);
+      // liters: 500/100 + 600/200 + 700/200 = 11.5 -> 1800 / 11.5.
+      expect(stats['costPerLiter'] as double, closeTo(156.52, 0.1));
+      expect(stats['maxFillCost'], 700.0);
+      expect(stats['minFillCost'], 500.0);
+      expect((stats['maxFillRecord'] as FillRecord).id, '3');
+      expect((stats['minFillRecord'] as FillRecord).id, '1');
+
+      final spendByFuelType =
+          stats['spendByFuelType'] as Map<String, double>;
+      expect(spendByFuelType['regular'], 500.0);
+      expect(spendByFuelType['premium_95'], 1300.0);
+
+      // 3 fills across 31 days ~ 2.9 fills/month.
+      expect(stats['fillsPerMonth'] as double, closeTo(2.9, 0.1));
+    });
+
+    test('getOverallStats defaults the new metrics when there are no records',
+        () async {
+      stubStorage(records: <FillRecord>[]);
+
+      provider = RecordsProvider(mockStorageService);
+      await provider.init();
+
+      final stats = provider.getOverallStats();
+
+      expect(stats['costPerKm'], 0.0);
+      expect(stats['costPerLiter'], 0.0);
+      expect(stats['fillsPerMonth'], 0.0);
+      expect(stats['maxFillCost'], 0.0);
+      expect(stats['minFillCost'], 0.0);
+      expect(stats['maxFillRecord'], isNull);
+      expect(stats['minFillRecord'], isNull);
+      expect(stats['spendByFuelType'], isEmpty);
+    });
+
     test('getRefillForecast can forecast for a selected fuel type only',
         () async {
       final records = [
