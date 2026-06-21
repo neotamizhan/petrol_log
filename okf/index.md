@@ -17,4 +17,4 @@ system overview, then drill into the area you need.
 * [Services](services/) - StorageService (persistence + migrations) and ImportService (CSV import).
 * [Screens](screens/) - The 11 UI screens, from splash through the home dashboard to logging, stats, and settings.
 * [Metrics](metrics/) - The analytics algorithms: overall stats, refill forecast, maintenance due status.
-* [Reference](reference/) - Cross-cutting reference: storage keys, migrations, data flow, navigation, dependencies, build matrix, testing, and the documentation-maintenance convention.
+* [Reference](reference/) - Cross-cutting reference: product vision, storage keys, migrations, data flow, navigation, dependencies, build matrix, testing, and the documentation-maintenance convention.

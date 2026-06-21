@@ -6,5 +6,6 @@
 * [Data Migrations](migrations.md) - The on-load migrations that convert legacy SharedPreferences data into the current model shape.
 * [Screen Navigation Map](navigation-map.md) - How the app's screens connect, from splash through the home dashboard to the logging, stats, and settings flows.
 * [Platform & Build Matrix](platform-build-matrix.md) - Supported target platforms and their release build commands, plus the static product website.
+* [Product Vision](product-vision.md) - The north star for Vehicle Logbook — effortless, private peace of mind about each vehicle's cost and care — and the principles and roadmap that flow from it.
 * [SharedPreferences Storage Keys](storage-keys.md) - The complete set of SharedPreferences keys used for on-device persistence, with their types and meaning.
 * [Testing Strategy](testing-strategy.md) - The unit-test coverage map mirroring the lib/ structure, and the commands to run tests and analysis.

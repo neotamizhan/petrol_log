@@ -14,6 +14,10 @@ with Flutter (Dart 3.0+). All data is stored locally on the device via
 SharedPreferences. There are no backend services, no external APIs, and no network
 calls at runtime — no analytics SDKs, no crash reporting.
 
+The product intent that ties these capabilities together is captured in the
+[Product Vision](/reference/product-vision.md): effortless, private peace of mind about each
+vehicle's cost and care.
+
 Core responsibilities:
 
 - Record service, repair, inspection, and reminder activity per vehicle
