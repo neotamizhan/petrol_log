@@ -12,7 +12,7 @@ timestamp: 2026-06-21T00:00:00Z
 The app's hub. It shows:
 
 - A selected-[Vehicle](/models/vehicle.md) switcher (manage → [VehiclesScreen](/screens/vehicles-screen.md)).
-- A care status panel: odometer, open items, log entries.
+- A care status panel: odometer, open items, and this month's spend.
 - Next-step cards driven by [Maintenance Due Status](/metrics/maintenance-due-status.md)
   and the [Refill Forecast](/metrics/refill-forecast.md).
 - A combined activity timeline merging [maintenance](/models/maintenance-record.md) and

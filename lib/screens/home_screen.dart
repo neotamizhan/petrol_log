@@ -83,6 +83,12 @@ class HomeScreen extends StatelessWidget {
                 provider.getMaintenanceOverview(vehicleId: selectedVehicleId);
             final forecast =
                 provider.getRefillForecast(vehicleId: selectedVehicleId);
+            final monthlySpending =
+                stats['monthlySpending'] as Map<String, double>;
+            final now = DateTime.now();
+            final thisMonthKey =
+                '${now.year}-${now.month.toString().padLeft(2, '0')}';
+            final thisMonthSpend = monthlySpending[thisMonthKey] ?? 0.0;
             final highestLoggedOdometer =
                 provider.getHighestOdometerForVehicle(selectedVehicleId);
             final vehicleOdometer = selectedVehicle?.currentOdometer ?? 0;
@@ -116,8 +122,8 @@ class HomeScreen extends StatelessWidget {
                     child: _CareStatusPanel(
                       overview: maintenanceOverview,
                       currentOdometer: currentOdometer,
-                      totalEntries:
-                          fuelRecords.length + maintenanceRecords.length,
+                      thisMonthSpend: thisMonthSpend,
+                      currency: provider.currency,
                       averageMileage: (stats['averageMileage'] as double?) ?? 0,
                       onLogService: () => _navigateToAddMaintenance(context),
                       onLogFuel: () => _navigateToAddFuel(context),
@@ -448,7 +454,8 @@ class _VehicleSwitcher extends StatelessWidget {
 class _CareStatusPanel extends StatelessWidget {
   final Map<String, dynamic> overview;
   final double currentOdometer;
-  final int totalEntries;
+  final double thisMonthSpend;
+  final String currency;
   final double averageMileage;
   final VoidCallback onLogService;
   final VoidCallback onLogFuel;
@@ -457,7 +464,8 @@ class _CareStatusPanel extends StatelessWidget {
   const _CareStatusPanel({
     required this.overview,
     required this.currentOdometer,
-    required this.totalEntries,
+    required this.thisMonthSpend,
+    required this.currency,
     required this.averageMileage,
     required this.onLogService,
     required this.onLogFuel,
@@ -574,8 +582,9 @@ class _CareStatusPanel extends StatelessWidget {
               ),
               Expanded(
                 child: _CareMetric(
-                  label: 'Log entries',
-                  value: totalEntries.toString(),
+                  label: 'This month',
+                  value:
+                      '$currency${CurrencyUtils.formatAmount(thisMonthSpend, currency)}',
                 ),
               ),
             ],
