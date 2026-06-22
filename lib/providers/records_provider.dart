@@ -100,7 +100,27 @@ class RecordsProvider with ChangeNotifier {
   }
 
   double getFuelPriceForRecord(FillRecord record) {
+    final recorded = record.pricePerLiter;
+    if (recorded != null && recorded > 0) {
+      return recorded;
+    }
     return getFuelPriceForFuelTypeId(record.fuelTypeId);
+  }
+
+  /// The price/litre to default a new fill to: the most recent fill's price for
+  /// this vehicle + fuel type, else the fuel type's configured price.
+  double lastFuelPriceForVehicleFuelType(String vehicleId, String fuelTypeId) {
+    final candidates = _records
+        .where((r) => r.vehicleId == vehicleId && r.fuelTypeId == fuelTypeId)
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+    for (final record in candidates) {
+      final price = record.pricePerLiter;
+      if (price != null && price > 0) {
+        return price;
+      }
+    }
+    return getFuelPriceForFuelTypeId(fuelTypeId);
   }
 
   String _resolveFuelTypeCurrency(String? currency) {

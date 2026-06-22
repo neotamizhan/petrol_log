@@ -29,6 +29,42 @@ class StorageService {
     await _migrateLegacyFuelSettings();
     await _migrateFuelTypeCurrencies();
     await _migrateToVehicleSupport();
+    await _migrateFillRecordPrices();
+  }
+
+  /// Freeze legacy fills' volumes by stamping each record that predates
+  /// per-fill pricing with its fuel type's current price. After this, changing
+  /// a fuel type's price no longer rewrites historical volumes.
+  Future<void> _migrateFillRecordPrices() async {
+    final rawRecords = _prefs.getString(_recordsKey);
+    if (rawRecords == null || rawRecords.isEmpty) {
+      return;
+    }
+    try {
+      final decoded = jsonDecode(rawRecords);
+      if (decoded is! List) {
+        return;
+      }
+      final priceByFuelTypeId = <String, double>{
+        for (final fuelType in getFuelTypes()) fuelType.id: fuelType.pricePerLiter,
+      };
+      bool changed = false;
+      for (final item in decoded) {
+        if (item is Map && item['pricePerLiter'] == null) {
+          final fuelTypeId = (item['fuelTypeId'] as String?)?.trim();
+          item['pricePerLiter'] = (fuelTypeId != null &&
+                  (priceByFuelTypeId[fuelTypeId] ?? 0) > 0)
+              ? priceByFuelTypeId[fuelTypeId]
+              : defaultFuelPrice;
+          changed = true;
+        }
+      }
+      if (changed) {
+        await _prefs.setString(_recordsKey, jsonEncode(decoded));
+      }
+    } catch (_) {
+      // Keep existing data untouched if migration parsing fails.
+    }
   }
 
   Future<void> _migrateLegacyFuelSettings() async {

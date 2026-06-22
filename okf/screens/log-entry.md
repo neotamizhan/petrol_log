@@ -19,8 +19,10 @@ replacing the former separate add-fuel, edit-fuel, and add/edit-service screens.
   static label) in edit mode, since a saved entry's type cannot change.
 - **Shared fields** — [Vehicle](/models/vehicle.md), date (+ time for fuel), odometer (with a
   "Last: X km" hint from `Vehicle.currentOdometer`), cost, notes.
-- **Fuel mode** — [FuelType](/models/fuel-type.md) dropdown with live derived volume; produces
-  a [FillRecord](/models/fill-record.md) via `addRecord`/`updateRecord`.
+- **Fuel mode** — [FuelType](/models/fuel-type.md) dropdown, an **editable price/litre**
+  (defaulted from the last fill via `lastFuelPriceForVehicleFuelType`), and live derived
+  volume; produces a [FillRecord](/models/fill-record.md) (carrying its own `pricePerLiter`)
+  via `addRecord`/`updateRecord`. This removes the recurring need to edit prices in Settings.
 - **Service mode** — service type with starter-preset chips, category, optional next-due
   odometer/date; produces a [MaintenanceRecord](/models/maintenance-record.md) via
   `addMaintenanceRecord`/`updateMaintenanceRecord`.

@@ -1,6 +1,7 @@
 # Directory Update Log
 
 ## 2026-06-21
+* **Update**: Added per-fill pricing — [FillRecord](/models/fill-record.md) gains a nullable `pricePerLiter`, the [LogEntryScreen](/screens/log-entry.md) exposes an editable price/litre (defaulted from the last fill), [RecordsProvider](/state/records-provider.md) resolves volume from the per-fill price (`getFuelPriceForRecord`, `lastFuelPriceForVehicleFuelType`), and [`_migrateFillRecordPrices`](/reference/migrations.md) freezes legacy volumes. Streamlining step: "kill the configuration tax."
 * **Update**: [HomeScreen](/screens/home-screen.md) care panel now surfaces this month's spend in place of the raw log-entry count (streamlining step: "make Home the home").
 * **Update**: Unified the capture flow — added the [LogEntryScreen](/screens/log-entry.md) concept and removed the separate add-fuel, edit-fuel, and add/edit-service screen concepts (9 screens total). Re-pointed inbound links in [home](/screens/home-screen.md), [maintenance](/screens/maintenance-screen.md), [navigation map](/reference/navigation-map.md), and [product vision](/reference/product-vision.md); recorded the new `lastFuelTypeIdForVehicle`/`lastServiceTypeForVehicle` helpers on [RecordsProvider](/state/records-provider.md).
 * **Creation**: Added the [Product Vision](/reference/product-vision.md) concept (mirroring `docs/VISION.md`) — the north star, principles, three-loop model, and streamlining roadmap — and linked it from the [system overview](/system.md).

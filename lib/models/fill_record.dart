@@ -10,6 +10,12 @@ class FillRecord {
   final String fuelTypeId;
   final String vehicleId;
 
+  /// Price per litre paid for this specific fill. When null (legacy records
+  /// before per-fill pricing), callers fall back to the fuel type's price.
+  /// Capturing it here freezes a fill's volume so later price changes to the
+  /// fuel type no longer rewrite historical volumes.
+  final double? pricePerLiter;
+
   FillRecord({
     required this.id,
     required this.date,
@@ -18,6 +24,7 @@ class FillRecord {
     this.notes = '',
     this.fuelTypeId = FuelType.defaultId,
     this.vehicleId = 'default_vehicle',
+    this.pricePerLiter,
   });
 
   FillRecord copyWith({
@@ -28,6 +35,7 @@ class FillRecord {
     String? notes,
     String? fuelTypeId,
     String? vehicleId,
+    double? pricePerLiter,
   }) {
     return FillRecord(
       id: id ?? this.id,
@@ -37,6 +45,7 @@ class FillRecord {
       notes: notes ?? this.notes,
       fuelTypeId: fuelTypeId ?? this.fuelTypeId,
       vehicleId: vehicleId ?? this.vehicleId,
+      pricePerLiter: pricePerLiter ?? this.pricePerLiter,
     );
   }
 
@@ -76,6 +85,7 @@ class FillRecord {
       'notes': notes,
       'fuelTypeId': fuelTypeId,
       'vehicleId': vehicleId,
+      'pricePerLiter': pricePerLiter,
     };
   }
 
@@ -91,6 +101,7 @@ class FillRecord {
           ? (json['fuelTypeId'] as String).trim()
           : FuelType.defaultId,
       vehicleId: json['vehicleId'] as String? ?? 'default_vehicle',
+      pricePerLiter: (json['pricePerLiter'] as num?)?.toDouble(),
     );
   }
 

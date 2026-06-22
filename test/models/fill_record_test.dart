@@ -259,5 +259,40 @@ void main() {
         expect(decoded, isEmpty);
       });
     });
+
+    group('pricePerLiter', () {
+      test('round-trips through JSON', () {
+        final record = FillRecord(
+          id: '1',
+          date: DateTime(2024, 1, 15),
+          odometerKm: 1000,
+          cost: 300,
+          pricePerLiter: 150,
+        );
+        final decoded = FillRecord.fromJson(record.toJson());
+        expect(decoded.pricePerLiter, 150);
+      });
+
+      test('legacy JSON without pricePerLiter decodes as null', () {
+        final json = {
+          'id': '1',
+          'date': DateTime(2024, 1, 15).toIso8601String(),
+          'odometerKm': 1000,
+          'cost': 300,
+        };
+        expect(FillRecord.fromJson(json).pricePerLiter, isNull);
+      });
+
+      test('copyWith preserves pricePerLiter', () {
+        final record = FillRecord(
+          id: '1',
+          date: DateTime(2024, 1, 15),
+          odometerKm: 1000,
+          cost: 300,
+          pricePerLiter: 150,
+        );
+        expect(record.copyWith(notes: 'x').pricePerLiter, 150);
+      });
+    });
   });
 }

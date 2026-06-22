@@ -21,6 +21,7 @@ calls its methods; every mutation persists through a service then calls
 |---|---|---|
 | Initializer | `_loadAll()` | Loads all data on startup; runs migrations + sanitization |
 | Fill records | `addRecord` / `updateRecord` / `deleteRecord` | Keeps [FillRecord](/models/fill-record.md) list sorted; advances vehicle odometer on add |
+| Fuel pricing | `getFuelPriceForRecord` / `lastFuelPriceForVehicleFuelType` | Prefers a fill's own `pricePerLiter` (else the fuel type's); defaults new fills to the last fill's price |
 | Fuel types | `addFuelType` / `updateFuelType` / `deleteFuelType` | Manages [FuelType](/models/fuel-type.md) incl. per-type currency; soft-deletes types with records |
 | Vehicles | `addVehicle` / `updateVehicle` / `deleteVehicle` | Manages [Vehicle](/models/vehicle.md) registry; soft-deletes with records |
 | Maintenance | `addMaintenanceRecord` / `updateMaintenanceRecord` / `deleteMaintenanceRecord` | Newer records supersede older ones in the same schedule |

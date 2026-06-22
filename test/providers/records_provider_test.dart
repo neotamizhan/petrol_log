@@ -331,6 +331,79 @@ void main() {
       expect(provider.lastServiceTypeForVehicle('missing'), isNull);
     });
 
+    test('getFuelPriceForRecord prefers the per-fill price', () async {
+      stubStorage(fuelTypes: const [regularFuelType]); // regular price 100
+      provider = RecordsProvider(mockStorageService);
+      await provider.init();
+
+      final withPrice = FillRecord(
+        id: '1',
+        date: DateTime(2024, 1, 1),
+        odometerKm: 1000,
+        cost: 300,
+        fuelTypeId: 'regular',
+        pricePerLiter: 150,
+      );
+      final withoutPrice = FillRecord(
+        id: '2',
+        date: DateTime(2024, 1, 1),
+        odometerKm: 1000,
+        cost: 300,
+        fuelTypeId: 'regular',
+      );
+
+      expect(provider.getFuelPriceForRecord(withPrice), 150.0);
+      expect(provider.getFuelPriceForRecord(withoutPrice), 100.0);
+      // Volume derives from the per-fill price: 300 / 150 = 2 L.
+      expect(
+        withPrice.getFuelAddedLiters(provider.getFuelPriceForRecord(withPrice)),
+        2.0,
+      );
+    });
+
+    test('lastFuelPriceForVehicleFuelType returns the most recent fill price',
+        () async {
+      final vehicle = Vehicle(
+        id: 'v1',
+        name: 'Car',
+        currentOdometer: 0,
+        createdAt: DateTime(2024, 1, 1),
+      );
+      final records = [
+        FillRecord(
+          id: '1',
+          date: DateTime(2024, 1, 1),
+          odometerKm: 1000,
+          cost: 300,
+          fuelTypeId: 'regular',
+          vehicleId: 'v1',
+          pricePerLiter: 100,
+        ),
+        FillRecord(
+          id: '2',
+          date: DateTime(2024, 2, 1),
+          odometerKm: 1200,
+          cost: 330,
+          fuelTypeId: 'regular',
+          vehicleId: 'v1',
+          pricePerLiter: 110,
+        ),
+      ];
+      stubStorage(
+        records: records,
+        fuelTypes: const [regularFuelType, premiumFuelType],
+        vehicles: [vehicle],
+      );
+
+      provider = RecordsProvider(mockStorageService);
+      await provider.init();
+
+      expect(provider.lastFuelPriceForVehicleFuelType('v1', 'regular'), 110.0);
+      // No prior premium fill -> falls back to the fuel type's price (200).
+      expect(
+          provider.lastFuelPriceForVehicleFuelType('v1', 'premium_95'), 200.0);
+    });
+
     test('getRefillForecast can forecast for a selected fuel type only',
         () async {
       final records = [

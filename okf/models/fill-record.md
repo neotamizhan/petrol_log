@@ -18,6 +18,7 @@ timestamp: 2026-06-21T00:00:00Z
 | `notes` | String | Free-text notes |
 | `fuelTypeId` | String | FK → [FuelType](/models/fuel-type.md) |
 | `vehicleId` | String | FK → [Vehicle](/models/vehicle.md) |
+| `pricePerLiter` | double? | Price/litre paid for **this** fill; null on legacy records |
 
 # Computed Properties
 
@@ -26,9 +27,13 @@ timestamp: 2026-06-21T00:00:00Z
 - `getMileage()` — distance per litre for this interval
 - `getDaysSinceLastFill()` — elapsed days since the previous fill
 
-Fuel volume is **derived**, not stored: it depends on the [FuelType](/models/fuel-type.md)
-`pricePerLiter` in effect. Records are kept sorted by date descending by the
-[StorageService](/services/storage-service.md).
+Fuel volume is **derived**, not stored: it is `cost / pricePerLiter`. The price used is the
+fill's **own** `pricePerLiter` when set (via
+[`getFuelPriceForRecord`](/state/records-provider.md)), else the
+[FuelType](/models/fuel-type.md)'s price. Capturing the price per fill **freezes** a fill's
+volume so later fuel-type price changes no longer rewrite historical volumes; legacy records
+are backfilled by [`_migrateFillRecordPrices`](/reference/migrations.md). Records are kept
+sorted by date descending by the [StorageService](/services/storage-service.md).
 
 These records are the primary input to [Overall Stats](/metrics/overall-stats.md) and
 the [Refill Forecast](/metrics/refill-forecast.md).

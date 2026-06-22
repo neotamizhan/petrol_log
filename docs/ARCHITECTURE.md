@@ -150,7 +150,7 @@ C4Component
 
     Component(splash, "SplashScreen", "splash_screen.dart", "Animated entry screen.\n1.7 s delay then navigate to Home.")
     Component(home, "HomeScreen", "home_screen.dart", "Vehicle logbook dashboard.\nShows selected vehicle, maintenance status,\nnext-step cards, and combined service/fuel timeline.")
-    Component(logEntry, "LogEntryScreen", "log_entry_screen.dart", "Unified Log screen: Fuel/Service toggle,\ncreate or edit, shared + type-specific fields,\nsmart defaults, delete. Replaces the separate\nadd/edit-fuel and add/edit-service screens.")
+    Component(logEntry, "LogEntryScreen", "log_entry_screen.dart", "Unified Log screen: Fuel/Service toggle,\ncreate or edit, shared + type-specific fields,\neditable per-fill price (default from last fill),\nsmart defaults, delete. Replaces the separate\nadd/edit-fuel and add/edit-service screens.")
     Component(vehicles, "VehiclesScreen", "vehicles_screen.dart", "List of vehicles with status indicators.")
     Component(addVehicle, "AddVehicleScreen", "add_vehicle_screen.dart", "Form: name, make, model, year,\nplate, starting odometer.")
     Component(editVehicle, "EditVehicleScreen", "edit_vehicle_screen.dart", "Pre-filled form. Adds Delete action.")
@@ -199,6 +199,7 @@ erDiagram
     String notes
     String fuelTypeId FK
     String vehicleId FK
+    double pricePerLiter "nullable; per-fill price"
   }
 
   MaintenanceRecord {
@@ -367,6 +368,7 @@ flowchart LR
 | `_migrateLegacyFuelSettings` | `fuel_price_per_liter` key exists on load | Creates a `Regular` FuelType using the stored price and current global currency; removes old key |
 | `_migrateFuelTypeCurrencies` | Stored `fuel_types` entries are missing `currency` | Backfills each fuel type with the current global currency so existing records keep a usable display currency |
 | `_migrateToVehicleSupport` | `vehicles` key empty but `fill_records` exist | Creates a `My Vehicle` default vehicle; sets `vehicleId` on all existing records |
+| `_migrateFillRecordPrices` | `fill_records` exist with no `pricePerLiter` | Stamps each legacy fill with its fuel type's current price, freezing historical volumes against later price changes |
 
 ---
 
@@ -379,7 +381,7 @@ Aggregates across filtered records:
 | Output | Calculation |
 |---|---|
 | `totalSpent` | Sum of all `FillRecord.cost` |
-| `totalFuelLiters` | Sum of `cost / pricePerLiter` per record |
+| `totalFuelLiters` | Sum of `cost / pricePerLiter` per record (the fill's own `pricePerLiter` when set, else the fuel type's, via `getFuelPriceForRecord`) |
 | `totalDistance` | Sum of `getDistanceSinceLastFill()` across consecutive pairs |
 | `averageMileage` | `totalDistance / totalFuelLiters` |
 | `bestMileage` / `worstMileage` | Max/min per-record mileage with associated record |
@@ -550,6 +552,8 @@ petrol_log/
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-06-21 | 1.0.0+3 | Added per-fill pricing: `FillRecord.pricePerLiter` (nullable), an editable Price/litre field on the Log screen (defaulted from the last fill), `getFuelPriceForRecord` now prefers the per-fill price, and `_migrateFillRecordPrices` freezes legacy volumes. Kills the recurring "edit price in Settings" tax and stops price edits rewriting historical volumes. |
+| 2026-06-21 | 1.0.0+3 | Surfaced this month's spend on the Home care panel (replacing the log-entry count). |
 | 2026-06-21 | 1.0.0+3 | Unified the fuel and maintenance entry screens into one `LogEntryScreen` (Fuel/Service toggle, create/edit, smart defaults); removed the three old entry screens (11→9 screens); added `lastFuelTypeIdForVehicle`/`lastServiceTypeForVehicle` provider helpers. |
 | 2026-06-21 | 1.0.0+3 | Expanded the Stats screen with spending, cadence, spend-by-fuel-type, refill forecast, and cost-of-ownership panels; extended `getOverallStats` outputs and added the `fl_chart` dependency. |
 | 2026-05-13 | 1.0.0+3 | Added fuel-type-level currency support for pricing, persistence, and fuel record displays. |

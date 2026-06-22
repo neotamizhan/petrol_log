@@ -77,7 +77,13 @@ void main() {
 
   // Launch the screen via a pushed route so save (which pops) returns to a
   // parent. The provider sits above MaterialApp so pushed routes can read it.
+  // A tall viewport keeps every field in the lazy ListView built.
   Future<void> openScreen(WidgetTester tester, Widget screen) async {
+    tester.view.physicalSize = const Size(1200, 3400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     final provider = RecordsProvider(storage);
     await provider.init();
     await tester.pumpWidget(
@@ -104,25 +110,23 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  // Fields live in a lazy ListView; scroll a keyed field into view, then type.
   Future<void> enterByKey(WidgetTester tester, String key, String text) async {
-    await tester.scrollUntilVisible(
-      find.byKey(Key(key)),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
     await tester.enterText(find.byKey(Key(key)), text);
   }
 
-  testWidgets('fuel mode saves a fill record', (tester) async {
+  testWidgets('fuel mode saves a fill record with its per-fill price',
+      (tester) async {
     await openScreen(tester, const LogEntryScreen(initialMode: LogMode.fuel));
 
+    await enterByKey(tester, 'log-price', '0.11');
     await enterByKey(tester, 'log-odometer', '1500');
     await enterByKey(tester, 'log-cost', '30');
     await tester.tap(find.widgetWithText(FilledButton, 'Save'));
     await tester.pumpAndSettle();
 
-    verify(() => storage.addRecord(any())).called(1);
+    final captured = verify(() => storage.addRecord(captureAny())).captured;
+    expect(captured, hasLength(1));
+    expect((captured.single as FillRecord).pricePerLiter, 0.11);
     expect(tester.takeException(), isNull);
   });
 

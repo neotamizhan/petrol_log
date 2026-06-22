@@ -71,6 +71,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
   final _formKey = GlobalKey<FormState>();
   final _odometerController = TextEditingController();
   final _costController = TextEditingController();
+  final _priceController = TextEditingController();
   final _notesController = TextEditingController();
   final _serviceTypeController = TextEditingController();
   final _nextDueOdometerController = TextEditingController();
@@ -145,6 +146,16 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
         final currency = provider.getCurrencyForFuelTypeId(fill.fuelTypeId);
         _costController.text =
             CurrencyUtils.formatAmount(fill.cost, currency);
+        final price = fill.pricePerLiter ??
+            provider.getFuelPriceForFuelTypeId(fill.fuelTypeId);
+        _priceController.text = CurrencyUtils.formatAmount(price, currency);
+      } else if (_mode == LogMode.fuel) {
+        // New fill: default the price to the last fill's price for this
+        // vehicle + fuel type (the recurring "no Settings trip" win).
+        final currency = provider.getCurrencyForFuelTypeId(_selectedFuelTypeId);
+        final price = provider.lastFuelPriceForVehicleFuelType(
+            _selectedVehicleId, _selectedFuelTypeId);
+        _priceController.text = CurrencyUtils.formatAmount(price, currency);
       }
     });
   }
@@ -153,6 +164,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
   void dispose() {
     _odometerController.dispose();
     _costController.dispose();
+    _priceController.dispose();
     _notesController.dispose();
     _serviceTypeController.dispose();
     _nextDueOdometerController.dispose();
@@ -350,8 +362,6 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
           final value = fuelTypes.any((f) => f.id == selectedId)
               ? selectedId
               : fuelTypes.first.id;
-          final price = provider.getFuelPriceForFuelTypeId(value);
-          final currency = provider.getCurrencyForFuelTypeId(value);
 
           return _Panel(
             title: 'Fuel Type',
@@ -376,24 +386,22 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
                     if (value == null) return;
                     setState(() {
                       _selectedFuelTypeId = value;
+                      final newCurrency =
+                          provider.getCurrencyForFuelTypeId(value);
                       final currentCost =
                           double.tryParse(_costController.text);
                       if (currentCost != null) {
-                        _costController.text = CurrencyUtils.formatAmount(
-                          currentCost,
-                          provider.getCurrencyForFuelTypeId(value),
-                        );
+                        _costController.text =
+                            CurrencyUtils.formatAmount(currentCost, newCurrency);
                       }
+                      // Re-seed the price from this type's last/known price.
+                      _priceController.text = CurrencyUtils.formatAmount(
+                        provider.lastFuelPriceForVehicleFuelType(
+                            _selectedVehicleId, value),
+                        newCurrency,
+                      );
                     });
                   },
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Price $currency${CurrencyUtils.formatAmount(price, currency)}/L',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
-                    fontWeight: FontWeight.w600,
-                  ),
                 ),
               ],
             ),
@@ -409,90 +417,127 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
               ? _selectedFuelTypeId
               : provider.selectedFuelTypeId;
           final currency = provider.getCurrencyForFuelTypeId(selectedId);
-          final price = provider.getFuelPriceForFuelTypeId(selectedId);
           return _Panel(
-            title: 'Cost & Volume',
+            title: 'Price, Cost & Volume',
             icon: Icons.payments_rounded,
-            child: Row(
+            child: Column(
               children: [
-                Expanded(
-                  child: _LabeledField(
-                    label: 'Total Cost',
-                    child: TextFormField(
-                      key: const Key('log-cost'),
-                      controller: _costController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(
-                          RegExp(CurrencyUtils.getInputPattern(currency)),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _LabeledField(
+                        label: 'Price / litre',
+                        child: TextFormField(
+                          key: const Key('log-price'),
+                          controller: _priceController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(CurrencyUtils.getInputPattern(currency)),
+                            ),
+                          ],
+                          decoration: _inputDecoration(
+                            theme,
+                            isDark,
+                            hintText: CurrencyUtils.getPlaceholder(currency),
+                            prefixText: '$currency ',
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Enter price';
+                            }
+                            final price = double.tryParse(value);
+                            if (price == null || price <= 0) {
+                              return 'Enter a valid price';
+                            }
+                            return null;
+                          },
                         ),
-                      ],
-                      decoration: _inputDecoration(
-                        theme,
-                        isDark,
-                        hintText: CurrencyUtils.getPlaceholder(currency),
-                        prefixText: '$currency ',
                       ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Enter cost';
-                        }
-                        final cost = double.tryParse(value);
-                        if (cost == null || cost <= 0) {
-                          return 'Enter a valid amount';
-                        }
-                        return null;
-                      },
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _LabeledField(
+                        label: 'Total Cost',
+                        child: TextFormField(
+                          key: const Key('log-cost'),
+                          controller: _costController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(CurrencyUtils.getInputPattern(currency)),
+                            ),
+                          ],
+                          decoration: _inputDecoration(
+                            theme,
+                            isDark,
+                            hintText: CurrencyUtils.getPlaceholder(currency),
+                            prefixText: '$currency ',
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Enter cost';
+                            }
+                            final cost = double.tryParse(value);
+                            if (cost == null || cost <= 0) {
+                              return 'Enter a valid amount';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _LabeledField(
-                    label: 'Volume',
-                    child: ValueListenableBuilder<TextEditingValue>(
-                      valueListenable: _costController,
-                      builder: (context, value, child) {
-                        final cost = double.tryParse(value.text) ?? 0;
-                        final volume = price > 0 ? cost / price : 0.0;
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 14),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? AppColors.surfaceDarkElevated
-                                : AppColors.backgroundLight,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isDark
-                                  ? AppColors.outlineDark
-                                  : AppColors.outlineLight,
+                const SizedBox(height: 12),
+                AnimatedBuilder(
+                  animation:
+                      Listenable.merge([_costController, _priceController]),
+                  builder: (context, child) {
+                    final cost = double.tryParse(_costController.text) ?? 0;
+                    final price = double.tryParse(_priceController.text) ?? 0;
+                    final volume = price > 0 ? cost / price : 0.0;
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.surfaceDarkElevated
+                            : AppColors.backgroundLight,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.outlineDark
+                              : AppColors.outlineLight,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Volume',
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: theme.colorScheme.onSurface
+                                  .withOpacity(0.6),
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                volume > 0 ? volume.toStringAsFixed(1) : '--',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.accentAmber,
-                                ),
-                              ),
-                              Text(
-                                'L',
-                                style: theme.textTheme.titleSmall?.copyWith(
-                                  color: AppColors.accentAmber,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
+                          Text(
+                            volume > 0
+                                ? '${volume.toStringAsFixed(1)} L'
+                                : '-- L',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.accentAmber,
+                            ),
                           ),
-                        );
-                      },
-                    ),
-                  ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -887,6 +932,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
     final fuelTypeId = _selectedFuelTypeId.isNotEmpty
         ? _selectedFuelTypeId
         : provider.selectedFuelTypeId;
+    final price = double.tryParse(_priceController.text.trim());
     final record = FillRecord(
       id: widget.editFillRecord?.id ??
           DateTime.now().millisecondsSinceEpoch.toString(),
@@ -896,6 +942,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
       notes: _notesController.text.trim(),
       fuelTypeId: fuelTypeId,
       vehicleId: vehicleId,
+      pricePerLiter: (price != null && price > 0) ? price : null,
     );
     if (widget.editFillRecord != null) {
       await provider.updateRecord(record);
