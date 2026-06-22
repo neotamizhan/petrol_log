@@ -26,5 +26,13 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   mocktail: ^1.0.4
 
+# Pin path_provider_foundation to its last pre-native-assets release. 2.5.0+
+# migrated to the experimental objective_c FFI framework, whose arm64 slice is
+# tagged for the iOS Simulator and fails App Store validation (error 409,
+# "Simulator platforms aren't permitted"). 2.4.x keeps file_picker working
+# without bundling objective_c.framework.
+dependency_overrides:
+  path_provider_foundation: 2.4.1
+
 flutter:
   uses-material-design: true
